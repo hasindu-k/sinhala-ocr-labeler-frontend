@@ -1,17 +1,49 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { NavHeader } from "@/components/nav-header"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { CheckCircle2, Search, Filter, Eye, Users, FileText, AlertCircle, TrendingUp } from "lucide-react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Legend } from "recharts"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { useState } from "react";
+import { NavHeader } from "@/components/nav-header";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  CheckCircle2,
+  Search,
+  Filter,
+  Eye,
+  Users,
+  FileText,
+  AlertCircle,
+  TrendingUp,
+} from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Bar,
+  BarChart,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  Legend,
+} from "recharts";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
 
 // Mock data
 const mockUnverifiedLines = [
@@ -55,14 +87,14 @@ const mockUnverifiedLines = [
     assignedTo: null,
     status: "pending",
   },
-]
+];
 
 const mockStats = {
   totalLines: 6550,
   verifiedLines: 5190,
   unverifiedLines: 1360,
   pendingReview: 450,
-}
+};
 
 const mockChartData = [
   { name: "Mon", verified: 245, pending: 56 },
@@ -72,71 +104,96 @@ const mockChartData = [
   { name: "Fri", verified: 298, pending: 53 },
   { name: "Sat", verified: 178, pending: 34 },
   { name: "Sun", verified: 134, pending: 28 },
-]
+];
 
 export default function VerifyPage() {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [filterStatus, setFilterStatus] = useState("all")
-  const [filterDocument, setFilterDocument] = useState("all")
-  const [selectedLines, setSelectedLines] = useState<string[]>([])
-  const [lines] = useState(mockUnverifiedLines)
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterDocument, setFilterDocument] = useState("all");
+  const [selectedLines, setSelectedLines] = useState<string[]>([]);
+  const [lines] = useState(mockUnverifiedLines);
 
   const filteredLines = lines.filter((line) => {
     const matchesSearch =
       line.autoText.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      line.documentName.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesStatus = filterStatus === "all" || line.status === filterStatus
-    const matchesDocument = filterDocument === "all" || line.documentName === filterDocument
-    return matchesSearch && matchesStatus && matchesDocument
-  })
+      line.documentName.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus =
+      filterStatus === "all" || line.status === filterStatus;
+    const matchesDocument =
+      filterDocument === "all" || line.documentName === filterDocument;
+    return matchesSearch && matchesStatus && matchesDocument;
+  });
 
   const handleSelectAll = () => {
     if (selectedLines.length === filteredLines.length) {
-      setSelectedLines([])
+      setSelectedLines([]);
     } else {
-      setSelectedLines(filteredLines.map((line) => line.id))
+      setSelectedLines(filteredLines.map((line) => line.id));
     }
-  }
+  };
 
   const handleSelectLine = (lineId: string) => {
     setSelectedLines((current) =>
-      current.includes(lineId) ? current.filter((id) => id !== lineId) : [...current, lineId],
-    )
-  }
+      current.includes(lineId)
+        ? current.filter((id) => id !== lineId)
+        : [...current, lineId]
+    );
+  };
 
   const handleBulkVerify = () => {
-    alert(`Verifying ${selectedLines.length} lines...`)
-    setSelectedLines([])
-  }
+    alert(`Verifying ${selectedLines.length} lines...`);
+    setSelectedLines([]);
+  };
 
   return (
     <div className="min-h-screen bg-background">
       <NavHeader />
 
-      <main className="container py-8">
+      <main className="container py-6 px-4 sm:px-6">
         <div className="space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold">Verification Dashboard</h1>
-            <p className="text-muted-foreground">Review, filter, and verify annotated text lines</p>
+          <div className="space-y-1">
+            <h1 className="text-2xl sm:text-3xl font-bold">
+              Verification Dashboard
+            </h1>
+            <p className="text-muted-foreground text-sm sm:text-base">
+              Review, filter, and verify annotated text lines
+            </p>
           </div>
 
           <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="lines">Unverified Lines</TabsTrigger>
-              <TabsTrigger value="statistics">Statistics</TabsTrigger>
+            <TabsList className="w-full flex justify-start overflow-x-auto sm:justify-center sm:overflow-visible gap-2 p-1">
+              <TabsTrigger
+                value="overview"
+                className="min-w-[100px] sm:min-w-[120px]"
+              >
+                Overview
+              </TabsTrigger>
+              <TabsTrigger
+                value="lines"
+                className="min-w-[120px] sm:min-w-[140px]"
+              >
+                Unverified Lines
+              </TabsTrigger>
+              <TabsTrigger
+                value="statistics"
+                className="min-w-[100px] sm:min-w-[120px]"
+              >
+                Statistics
+              </TabsTrigger>
             </TabsList>
 
             {/* Overview Tab */}
             <TabsContent value="overview" className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
                 <Card>
                   <CardHeader className="pb-3">
                     <CardDescription className="flex items-center gap-2">
                       <FileText className="h-4 w-4" />
                       Total Lines
                     </CardDescription>
-                    <CardTitle className="text-3xl">{mockStats.totalLines.toLocaleString()}</CardTitle>
+                    <CardTitle className="text-2xl sm:text-3xl">
+                      {mockStats.totalLines.toLocaleString()}
+                    </CardTitle>
                   </CardHeader>
                 </Card>
                 <Card>
@@ -145,7 +202,7 @@ export default function VerifyPage() {
                       <CheckCircle2 className="h-4 w-4" />
                       Verified
                     </CardDescription>
-                    <CardTitle className="text-3xl text-green-600 dark:text-green-400">
+                    <CardTitle className="text-2xl sm:text-3xl text-green-600 dark:text-green-400">
                       {mockStats.verifiedLines.toLocaleString()}
                     </CardTitle>
                   </CardHeader>
@@ -156,7 +213,7 @@ export default function VerifyPage() {
                       <AlertCircle className="h-4 w-4" />
                       Unverified
                     </CardDescription>
-                    <CardTitle className="text-3xl text-yellow-600 dark:text-yellow-400">
+                    <CardTitle className="text-2xl sm:text-3xl text-yellow-600 dark:text-yellow-400">
                       {mockStats.unverifiedLines.toLocaleString()}
                     </CardTitle>
                   </CardHeader>
@@ -165,43 +222,63 @@ export default function VerifyPage() {
                   <CardHeader className="pb-3">
                     <CardDescription className="flex items-center gap-2">
                       <Users className="h-4 w-4" />
-                      Pending Review
+                      Pending
                     </CardDescription>
-                    <CardTitle className="text-3xl">{mockStats.pendingReview.toLocaleString()}</CardTitle>
+                    <CardTitle className="text-2xl sm:text-3xl">
+                      {mockStats.pendingReview.toLocaleString()}
+                    </CardTitle>
                   </CardHeader>
                 </Card>
               </div>
 
-              <Card>
+              <Card className="overflow-hidden">
                 <CardHeader>
                   <CardTitle>Verification Progress</CardTitle>
-                  <CardDescription>Weekly verification activity</CardDescription>
+                  <CardDescription>
+                    Weekly verification activity
+                  </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <ChartContainer
-                    config={{
-                      verified: {
-                        label: "Verified",
-                        color: "hsl(var(--chart-1))",
-                      },
-                      pending: {
-                        label: "Pending",
-                        color: "hsl(var(--chart-2))",
-                      },
-                    }}
-                    className="h-80"
-                  >
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={mockChartData}>
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <Legend />
-                        <Bar dataKey="verified" fill="var(--color-verified)" name="Verified" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="pending" fill="var(--color-pending)" name="Pending" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </ChartContainer>
+                <CardContent className="px-2 sm:px-4 pb-6">
+                  {/* UPDATED: Added a wrapping div for horizontal scrolling on mobile */}
+                  <div className="w-full overflow-x-auto pb-4">
+                    {/* UPDATED: Added min-width to ensure chart doesn't get crushed */}
+                    <div className="min-w-[600px]">
+                      <ChartContainer
+                        config={{
+                          verified: {
+                            label: "Verified",
+                            color: "hsl(var(--chart-1))",
+                          },
+                          pending: {
+                            label: "Pending",
+                            color: "hsl(var(--chart-2))",
+                          },
+                        }}
+                        className="h-64 md:h-80"
+                      >
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={mockChartData}>
+                            <XAxis dataKey="name" />
+                            <YAxis />
+                            <ChartTooltip content={<ChartTooltipContent />} />
+                            <Legend />
+                            <Bar
+                              dataKey="verified"
+                              fill="var(--color-verified)"
+                              name="Verified"
+                              radius={[4, 4, 0, 0]}
+                            />
+                            <Bar
+                              dataKey="pending"
+                              fill="var(--color-pending)"
+                              name="Pending"
+                              radius={[4, 4, 0, 0]}
+                            />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </ChartContainer>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -213,10 +290,15 @@ export default function VerifyPage() {
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                       <CardTitle>Unverified Lines</CardTitle>
-                      <CardDescription>{filteredLines.length} lines pending verification</CardDescription>
+                      <CardDescription className="text-sm sm:text-base">
+                        {filteredLines.length} lines pending verification
+                      </CardDescription>
                     </div>
                     {selectedLines.length > 0 && (
-                      <Button onClick={handleBulkVerify} className="gap-2 w-fit">
+                      <Button
+                        onClick={handleBulkVerify}
+                        className="gap-2 w-full sm:w-fit"
+                      >
                         <CheckCircle2 className="h-4 w-4" />
                         Verify {selectedLines.length} Selected
                       </Button>
@@ -235,15 +317,22 @@ export default function VerifyPage() {
                         className="pl-9"
                       />
                     </div>
-                    <Select value={filterDocument} onValueChange={setFilterDocument}>
+                    <Select
+                      value={filterDocument}
+                      onValueChange={setFilterDocument}
+                    >
                       <SelectTrigger className="w-full md:w-64">
                         <Filter className="mr-2 h-4 w-4" />
                         <SelectValue placeholder="All Documents" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Documents</SelectItem>
-                        <SelectItem value="historical-manuscript-1890.pdf">Historical Manuscript</SelectItem>
-                        <SelectItem value="legal-document-bundle.pdf">Legal Documents</SelectItem>
+                        <SelectItem value="historical-manuscript-1890.pdf">
+                          Historical Manuscript
+                        </SelectItem>
+                        <SelectItem value="legal-document-bundle.pdf">
+                          Legal Documents
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -254,45 +343,69 @@ export default function VerifyPage() {
                       <>
                         <div className="flex items-center gap-2 px-4 py-2 border-b">
                           <Checkbox
-                            checked={selectedLines.length === filteredLines.length}
+                            checked={
+                              selectedLines.length === filteredLines.length
+                            }
                             onCheckedChange={handleSelectAll}
                           />
-                          <span className="text-sm font-medium">Select All</span>
+                          <span className="text-sm font-medium">
+                            Select All
+                          </span>
                         </div>
                         {filteredLines.map((line) => (
                           <div
                             key={line.id}
-                            className="flex items-start gap-3 rounded-lg border p-4 hover:bg-accent/50"
+                            className="flex flex-col sm:flex-row sm:items-start gap-3 rounded-lg border p-4 hover:bg-accent/50"
                           >
                             <Checkbox
                               checked={selectedLines.includes(line.id)}
                               onCheckedChange={() => handleSelectLine(line.id)}
                               className="mt-1"
                             />
-                            <div className="flex-1 min-w-0 space-y-2">
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-sm font-semibold">Line {line.lineNumber}</span>
-                                  <span className="text-sm text-muted-foreground">•</span>
-                                  <span className="text-sm text-muted-foreground">{line.documentName}</span>
-                                  <span className="text-sm text-muted-foreground">•</span>
-                                  <span className="text-sm text-muted-foreground">Page {line.pageNumber}</span>
+                            <div className="flex-1 min-w-0 space-y-3">
+                              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                                <div className="flex flex-wrap items-center gap-2 text-sm">
+                                  <span className="font-semibold">
+                                    Line {line.lineNumber}
+                                  </span>
+                                  <span className="text-muted-foreground">
+                                    •
+                                  </span>
+                                  <span className="text-muted-foreground">
+                                    {line.documentName}
+                                  </span>
+                                  <span className="text-muted-foreground">
+                                    •
+                                  </span>
+                                  <span className="text-muted-foreground">
+                                    Page {line.pageNumber}
+                                  </span>
                                 </div>
-                                <Button variant="ghost" size="sm" className="shrink-0 gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="shrink-0 gap-2 w-full sm:w-auto"
+                                >
                                   <Eye className="h-4 w-4" />
                                   View
                                 </Button>
                               </div>
                               <div className="space-y-1">
-                                <p className="text-sm text-muted-foreground">Auto: {line.autoText}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  Auto: {line.autoText}
+                                </p>
                                 {line.correctedText !== line.autoText && (
-                                  <p className="text-sm font-medium">Corrected: {line.correctedText}</p>
+                                  <p className="text-sm font-medium">
+                                    Corrected: {line.correctedText}
+                                  </p>
                                 )}
                               </div>
                               {line.assignedTo && (
                                 <div className="flex items-center gap-2">
                                   <Users className="h-3 w-3 text-muted-foreground" />
-                                  <span className="text-xs text-muted-foreground">Assigned to {line.assignedTo}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    Assigned to {line.assignedTo}
+                                  </span>
                                 </div>
                               )}
                             </div>
@@ -302,8 +415,12 @@ export default function VerifyPage() {
                     ) : (
                       <div className="flex flex-col items-center justify-center py-12 text-center">
                         <CheckCircle2 className="h-12 w-12 text-muted-foreground mb-3" />
-                        <h3 className="font-semibold mb-1">No unverified lines found</h3>
-                        <p className="text-sm text-muted-foreground">All lines matching your filters are verified</p>
+                        <h3 className="font-semibold mb-1">
+                          No unverified lines found
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          All lines matching your filters are verified
+                        </p>
                       </div>
                     )}
                   </div>
@@ -320,15 +437,20 @@ export default function VerifyPage() {
                       <TrendingUp className="h-5 w-5" />
                       Verification Rate
                     </CardTitle>
-                    <CardDescription>Overall completion percentage</CardDescription>
+                    <CardDescription>
+                      Overall completion percentage
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="text-5xl font-bold text-primary">
-                      {Math.round((mockStats.verifiedLines / mockStats.totalLines) * 100)}%
+                      {Math.round(
+                        (mockStats.verifiedLines / mockStats.totalLines) * 100
+                      )}
+                      %
                     </div>
                     <p className="text-sm text-muted-foreground mt-2">
-                      {mockStats.verifiedLines.toLocaleString()} of {mockStats.totalLines.toLocaleString()} lines
-                      verified
+                      {mockStats.verifiedLines.toLocaleString()} of{" "}
+                      {mockStats.totalLines.toLocaleString()} lines verified
                     </p>
                   </CardContent>
                 </Card>
@@ -339,7 +461,9 @@ export default function VerifyPage() {
                       <Users className="h-5 w-5" />
                       Team Activity
                     </CardTitle>
-                    <CardDescription>Active annotators this week</CardDescription>
+                    <CardDescription>
+                      Active annotators this week
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
@@ -364,5 +488,5 @@ export default function VerifyPage() {
         </div>
       </main>
     </div>
-  )
+  );
 }

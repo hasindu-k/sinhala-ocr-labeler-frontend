@@ -1,10 +1,16 @@
-"use client"
+"use client";
 
-import { NavHeader } from "@/components/nav-header"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Download, FileText, CheckCircle2, Package } from "lucide-react"
+import { NavHeader } from "@/components/nav-header";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Download, FileText, CheckCircle2, Package } from "lucide-react";
 
 // Mock data
 const mockDatasets = [
@@ -26,7 +32,7 @@ const mockDatasets = [
     createdAt: "2025-01-03T18:20:00",
     size: "28.8 MB",
   },
-]
+];
 
 export default function DatasetsPage() {
   return (
@@ -37,27 +43,35 @@ export default function DatasetsPage() {
         <div className="mx-auto max-w-5xl space-y-6">
           <div>
             <h1 className="text-3xl font-bold">Datasets</h1>
-            <p className="text-muted-foreground">Export and manage verified annotation datasets</p>
+            <p className="text-muted-foreground">
+              Export and manage verified annotation datasets
+            </p>
           </div>
 
           <div className="grid gap-6 md:grid-cols-3">
             <Card>
               <CardHeader className="pb-3">
                 <CardDescription>Total Datasets</CardDescription>
-                <CardTitle className="text-3xl">{mockDatasets.length}</CardTitle>
+                <CardTitle className="text-3xl">
+                  {mockDatasets.length}
+                </CardTitle>
               </CardHeader>
             </Card>
             <Card>
               <CardHeader className="pb-3">
                 <CardDescription>Total Documents</CardDescription>
-                <CardTitle className="text-3xl">{mockDatasets.reduce((sum, ds) => sum + ds.documents, 0)}</CardTitle>
+                <CardTitle className="text-3xl">
+                  {mockDatasets.reduce((sum, ds) => sum + ds.documents, 0)}
+                </CardTitle>
               </CardHeader>
             </Card>
             <Card>
               <CardHeader className="pb-3">
                 <CardDescription>Verified Lines</CardDescription>
                 <CardTitle className="text-3xl">
-                  {mockDatasets.reduce((sum, ds) => sum + ds.verifiedLines, 0).toLocaleString()}
+                  {mockDatasets
+                    .reduce((sum, ds) => sum + ds.verifiedLines, 0)
+                    .toLocaleString()}
                 </CardTitle>
               </CardHeader>
             </Card>
@@ -66,40 +80,53 @@ export default function DatasetsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Available Datasets</CardTitle>
-              <CardDescription>Download verified datasets for model training</CardDescription>
+              <CardDescription>
+                Download verified datasets for model training
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {mockDatasets.map((dataset) => (
                   <div key={dataset.id} className="rounded-lg border p-4">
-                    <div className="flex items-start justify-between gap-4">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                       <div className="flex items-start gap-3 flex-1">
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-primary/10">
                           <Package className="h-5 w-5 text-primary" />
                         </div>
                         <div className="flex-1 space-y-2">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-semibold">{dataset.name}</h3>
+                          {/* UPDATED: Added 'flex-wrap' here */}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="font-semibold mr-1">
+                              {dataset.name}
+                            </h3>
                             <Badge className="gap-1 bg-green-500/10 text-green-700 hover:bg-green-500/20 dark:text-green-400">
                               <CheckCircle2 className="h-3 w-3" />
                               Ready
                             </Badge>
                           </div>
+
                           <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                             <span className="flex items-center gap-1">
                               <FileText className="h-3.5 w-3.5" />
                               {dataset.documents} documents
                             </span>
                             <span>•</span>
-                            <span>{dataset.verifiedLines.toLocaleString()} verified lines</span>
+                            <span>
+                              {dataset.verifiedLines.toLocaleString()} verified
+                              lines
+                            </span>
                             <span>•</span>
                             <span>{dataset.size}</span>
                             <span>•</span>
-                            <span>Created {new Date(dataset.createdAt).toLocaleDateString()}</span>
+                            <span>
+                              Created{" "}
+                              {new Date(dataset.createdAt).toLocaleDateString()}
+                            </span>
                           </div>
                         </div>
                       </div>
-                      <Button className="gap-2 shrink-0">
+
+                      <Button className="gap-2 w-full sm:w-auto shrink-0">
                         <Download className="h-4 w-4" />
                         Download
                       </Button>
@@ -112,5 +139,5 @@ export default function DatasetsPage() {
         </div>
       </main>
     </div>
-  )
+  );
 }

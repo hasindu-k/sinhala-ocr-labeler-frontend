@@ -1,12 +1,18 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { NavHeader } from "@/components/nav-header"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
+import { useState } from "react";
+import { NavHeader } from "@/components/nav-header";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import {
   ChevronLeft,
   ChevronRight,
@@ -16,9 +22,15 @@ import {
   AlertCircle,
   FileText,
   Keyboard,
-} from "lucide-react"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+} from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 // Mock data
 const mockLines = [
@@ -52,60 +64,81 @@ const mockLines = [
     documentName: "historical-manuscript-1890.pdf",
     pageNumber: 1,
   },
-]
+];
 
 const mockDocuments = [
-  { id: "1", name: "historical-manuscript-1890.pdf", totalLines: 1250, verifiedLines: 890 },
-  { id: "2", name: "census-records-1920.pdf", totalLines: 3200, verifiedLines: 3200 },
-  { id: "3", name: "legal-document-bundle.pdf", totalLines: 2100, verifiedLines: 450 },
-]
+  {
+    id: "1",
+    name: "historical-manuscript-1890.pdf",
+    totalLines: 1250,
+    verifiedLines: 890,
+  },
+  {
+    id: "2",
+    name: "census-records-1920.pdf",
+    totalLines: 3200,
+    verifiedLines: 3200,
+  },
+  {
+    id: "3",
+    name: "legal-document-bundle.pdf",
+    totalLines: 2100,
+    verifiedLines: 450,
+  },
+];
 
 export default function LabelPage() {
-  const [currentLineIndex, setCurrentLineIndex] = useState(0)
-  const [lines, setLines] = useState(mockLines)
+  const [currentLineIndex, setCurrentLineIndex] = useState(0);
+  const [lines, setLines] = useState(mockLines);
   const [correctedText, setCorrectedText] = useState(
-    lines[currentLineIndex].correctedText || lines[currentLineIndex].autoText,
-  )
-  const [selectedDocument, setSelectedDocument] = useState("1")
-  const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false)
+    lines[currentLineIndex].correctedText || lines[currentLineIndex].autoText
+  );
+  const [selectedDocument, setSelectedDocument] = useState("1");
+  const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
 
-  const currentLine = lines[currentLineIndex]
-  const selectedDoc = mockDocuments.find((d) => d.id === selectedDocument)
-  const progress = selectedDoc ? Math.round((selectedDoc.verifiedLines / selectedDoc.totalLines) * 100) : 0
+  const currentLine = lines[currentLineIndex];
+  const selectedDoc = mockDocuments.find((d) => d.id === selectedDocument);
+  const progress = selectedDoc
+    ? Math.round((selectedDoc.verifiedLines / selectedDoc.totalLines) * 100)
+    : 0;
 
   const handleSave = () => {
-    const updatedLines = [...lines]
-    updatedLines[currentLineIndex].correctedText = correctedText
-    setLines(updatedLines)
-  }
+    const updatedLines = [...lines];
+    updatedLines[currentLineIndex].correctedText = correctedText;
+    setLines(updatedLines);
+  };
 
   const handleVerify = () => {
-    const updatedLines = [...lines]
-    updatedLines[currentLineIndex].correctedText = correctedText
-    updatedLines[currentLineIndex].verified = true
-    setLines(updatedLines)
-    goToNextLine()
-  }
+    const updatedLines = [...lines];
+    updatedLines[currentLineIndex].correctedText = correctedText;
+    updatedLines[currentLineIndex].verified = true;
+    setLines(updatedLines);
+    goToNextLine();
+  };
 
   const goToPreviousLine = () => {
     if (currentLineIndex > 0) {
-      const newIndex = currentLineIndex - 1
-      setCurrentLineIndex(newIndex)
-      setCorrectedText(lines[newIndex].correctedText || lines[newIndex].autoText)
+      const newIndex = currentLineIndex - 1;
+      setCurrentLineIndex(newIndex);
+      setCorrectedText(
+        lines[newIndex].correctedText || lines[newIndex].autoText
+      );
     }
-  }
+  };
 
   const goToNextLine = () => {
     if (currentLineIndex < lines.length - 1) {
-      const newIndex = currentLineIndex + 1
-      setCurrentLineIndex(newIndex)
-      setCorrectedText(lines[newIndex].correctedText || lines[newIndex].autoText)
+      const newIndex = currentLineIndex + 1;
+      setCurrentLineIndex(newIndex);
+      setCorrectedText(
+        lines[newIndex].correctedText || lines[newIndex].autoText
+      );
     }
-  }
+  };
 
   const handleSkip = () => {
-    goToNextLine()
-  }
+    goToNextLine();
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -116,7 +149,9 @@ export default function LabelPage() {
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <h1 className="text-3xl font-bold">Line Labeling</h1>
-              <p className="text-muted-foreground">Review and correct extracted text line by line</p>
+              <p className="text-muted-foreground">
+                Review and correct extracted text line by line
+              </p>
             </div>
             <Button
               variant="outline"
@@ -161,9 +196,14 @@ export default function LabelPage() {
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div className="space-y-1">
                   <CardTitle>Select Document</CardTitle>
-                  <CardDescription>Choose a document to start labeling</CardDescription>
+                  <CardDescription>
+                    Choose a document to start labeling
+                  </CardDescription>
                 </div>
-                <Select value={selectedDocument} onValueChange={setSelectedDocument}>
+                <Select
+                  value={selectedDocument}
+                  onValueChange={setSelectedDocument}
+                >
                   <SelectTrigger className="w-full md:w-80">
                     <SelectValue />
                   </SelectTrigger>
@@ -181,9 +221,12 @@ export default function LabelPage() {
               <CardContent>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Document Progress</span>
+                    <span className="text-muted-foreground">
+                      Document Progress
+                    </span>
                     <span className="font-medium">
-                      {selectedDoc.verifiedLines.toLocaleString()} / {selectedDoc.totalLines.toLocaleString()} lines (
+                      {selectedDoc.verifiedLines.toLocaleString()} /{" "}
+                      {selectedDoc.totalLines.toLocaleString()} lines (
                       {progress}%)
                     </span>
                   </div>
@@ -236,10 +279,16 @@ export default function LabelPage() {
 
               {/* Auto-detected Text */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Auto-detected Text</label>
+                <label className="text-sm font-medium">
+                  Auto-detected Text
+                </label>
                 <div className="rounded-lg border bg-secondary/50 p-4">
                   <p className="text-sm font-mono leading-relaxed">
-                    {currentLine.autoText || <span className="text-muted-foreground italic">No text detected</span>}
+                    {currentLine.autoText || (
+                      <span className="text-muted-foreground italic">
+                        No text detected
+                      </span>
+                    )}
                   </p>
                 </div>
               </div>
@@ -260,7 +309,11 @@ export default function LabelPage() {
 
               {/* Action Buttons */}
               <div className="flex flex-col gap-3 sm:flex-row">
-                <Button onClick={handleSave} variant="outline" className="gap-2 flex-1 bg-transparent">
+                <Button
+                  onClick={handleSave}
+                  variant="outline"
+                  className="gap-2 flex-1 bg-transparent"
+                >
                   <Save className="h-4 w-4" />
                   Save Correction
                 </Button>
@@ -268,7 +321,11 @@ export default function LabelPage() {
                   <CheckCircle2 className="h-4 w-4" />
                   Verify & Next
                 </Button>
-                <Button onClick={handleSkip} variant="outline" className="gap-2 bg-transparent">
+                <Button
+                  onClick={handleSkip}
+                  variant="outline"
+                  className="gap-2 bg-transparent"
+                >
                   <SkipForward className="h-4 w-4" />
                   Skip
                 </Button>
@@ -287,18 +344,20 @@ export default function LabelPage() {
                   className="gap-2 bg-transparent"
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  Previous Line
+                  <span className="hidden sm:inline">Previous Line</span>
                 </Button>
-                <span className="text-sm text-muted-foreground">
+
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
                   {currentLineIndex + 1} of {lines.length}
                 </span>
+
                 <Button
                   onClick={goToNextLine}
                   disabled={currentLineIndex === lines.length - 1}
                   variant="outline"
                   className="gap-2 bg-transparent"
                 >
-                  Next Line
+                  <span className="hidden sm:inline">Next Line</span>
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -307,5 +366,5 @@ export default function LabelPage() {
         </div>
       </main>
     </div>
-  )
+  );
 }
