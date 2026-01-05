@@ -35,3 +35,12 @@ export async function convertDocumentPages(documentId: string) {
     }
   );
 }
+
+export async function extractLinesFromPage(documentId: string, pageId: string) {
+  return apiFetch<{ status: string; page_id: string; lines_extracted: number }>(
+    `${API_BASE_URL}/documents/${documentId}/pages/${pageId}/extract-lines`,
+    {
+      method: "POST",
+    }
+  );
+}

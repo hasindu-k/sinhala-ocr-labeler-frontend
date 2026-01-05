@@ -10,3 +10,9 @@ export interface DocumentResponse {
   created_at?: string;
   updated_at?: string;
 }
+
+export interface LineExtractionResponse {
+  status: string;
+  page_id: string;
+  lines_extracted: number;
+}

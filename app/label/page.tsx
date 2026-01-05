@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavHeader } from "@/components/nav-header";
 import {
   Card,
@@ -31,6 +31,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { listDocuments } from "@/lib/documents-api";
+import { showToast } from "@/lib/toast";
+import { DocumentResponse } from "@/types/documents";
 
 // Mock data
 const mockLines = [
@@ -95,12 +98,31 @@ export default function LabelPage() {
   );
   const [selectedDocument, setSelectedDocument] = useState("1");
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [documents, setDocuments] = useState<DocumentResponse[]>([]);
 
   const currentLine = lines[currentLineIndex];
   const selectedDoc = mockDocuments.find((d) => d.id === selectedDocument);
   const progress = selectedDoc
     ? Math.round((selectedDoc.verifiedLines / selectedDoc.totalLines) * 100)
     : 0;
+
+  useEffect(() => {
+    const load = async () => {
+      setIsLoading(true);
+      try {
+        const data = await listDocuments();
+        setDocuments(data);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to load documents";
+        showToast({ message, variant: "error" });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    load();
+  }, []);
 
   const handleSave = () => {
     const updatedLines = [...lines];
@@ -208,9 +230,9 @@ export default function LabelPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {mockDocuments.map((doc) => (
+                    {documents.map((doc) => (
                       <SelectItem key={doc.id} value={doc.id}>
-                        {doc.name}
+                        {doc.original_filename || "Untitled"}
                       </SelectItem>
                     ))}
                   </SelectContent>
