@@ -1,28 +1,48 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import Link from "next/link"
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { FileText } from "lucide-react"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import Link from "next/link";
+import { useState } from "react";
+import { useAuth } from "@/lib/auth-context";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { FileText, Loader2 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function SignupPage() {
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [role, setRole] = useState("annotator")
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState("annotator");
+  const [isLoading, setIsLoading] = useState(false);
+  const { signup } = useAuth();
 
-  const handleSignup = (e: React.FormEvent) => {
-    e.preventDefault()
-    alert(`Creating account for: ${name} (${email}) as ${role}`)
-    // Redirect to dashboard after signup
-    window.location.href = "/"
-  }
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      await signup(name, email, password, role);
+    } catch (error) {
+      alert("Signup failed. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -33,14 +53,18 @@ export default function SignupPage() {
           </div>
           <div className="text-center space-y-2">
             <h1 className="text-3xl font-bold">Create an Account</h1>
-            <p className="text-muted-foreground">Join the DocLabel annotation platform</p>
+            <p className="text-muted-foreground">
+              Join the DocLabel annotation platform
+            </p>
           </div>
         </div>
 
         <Card>
           <CardHeader>
             <CardTitle>Sign Up</CardTitle>
-            <CardDescription>Create your account to get started</CardDescription>
+            <CardDescription>
+              Create your account to get started
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSignup} className="space-y-4">
@@ -89,14 +113,26 @@ export default function SignupPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button type="submit" className="w-full">
-                Create Account
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating account...
+                  </>
+                ) : (
+                  "Create Account"
+                )}
               </Button>
             </form>
 
             <div className="mt-6 text-center text-sm">
-              <span className="text-muted-foreground">Already have an account? </span>
-              <Link href="/login" className="text-primary hover:underline font-medium">
+              <span className="text-muted-foreground">
+                Already have an account?{" "}
+              </span>
+              <Link
+                href="/login"
+                className="text-primary hover:underline font-medium"
+              >
                 Sign in
               </Link>
             </div>
@@ -104,5 +140,5 @@ export default function SignupPage() {
         </Card>
       </div>
     </div>
-  )
+  );
 }

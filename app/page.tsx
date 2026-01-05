@@ -1,3 +1,8 @@
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,13 +18,57 @@ import {
   CheckCircle2,
   Database,
   ArrowRight,
+  Loader2,
 } from "lucide-react";
-import { NavHeader } from "@/components/nav-header";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function HomePage() {
+  const router = useRouter();
+  const { user, isLoading } = useAuth();
+
+  useEffect(() => {
+    if (!isLoading && user) {
+      router.push("/documents");
+    }
+  }, [user, isLoading, router]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (user) {
+    return null; // Will redirect to /documents
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      <NavHeader />
+      {/* Simple Header for Landing */}
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-16 items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <FileText className="h-5 w-5" />
+            </div>
+            <span className="text-lg font-semibold">DocLabel</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Link href="/login">
+              <Button variant="ghost">Sign In</Button>
+            </Link>
+            <Link href="/signup">
+              <Button>Get Started</Button>
+            </Link>
+          </div>
+        </div>
+      </header>
 
       <main className="container py-12">
         <div className="mx-auto max-w-5xl space-y-12">
@@ -34,19 +83,19 @@ export default function HomePage() {
               for annotation teams.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-3 pt-4">
-              <Link href="/upload">
+              <Link href="/signup">
                 <Button size="lg" className="gap-2">
                   <Upload className="h-4 w-4" />
-                  Upload Document
+                  Get Started Free
                 </Button>
               </Link>
-              <Link href="/documents">
+              <Link href="/login">
                 <Button
                   size="lg"
                   variant="outline"
                   className="gap-2 bg-transparent"
                 >
-                  View Documents
+                  Sign In
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
