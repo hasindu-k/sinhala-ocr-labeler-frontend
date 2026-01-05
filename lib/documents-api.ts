@@ -96,3 +96,18 @@ export async function extractTextFromLine(lineImageId: string) {
     method: "POST",
   });
 }
+
+export async function saveCorrectedText(
+  lineImageId: string,
+  correctedText: string
+) {
+  return apiFetch<{
+    status: string;
+    line_id: string;
+    corrected_text: string;
+    gt_file_updated: boolean;
+  }>(`${API_BASE_URL}/api/lines/${lineImageId}/corrected-text`, {
+    method: "PUT",
+    body: JSON.stringify({ corrected_text: correctedText }),
+  });
+}

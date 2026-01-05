@@ -36,6 +36,7 @@ import {
   listDocumentLines,
   listDocuments,
   extractTextFromLine,
+  saveCorrectedText,
 } from "@/lib/documents-api";
 import { showToast } from "@/lib/toast";
 import { DocumentResponse, LineResponse } from "@/types/documents";
@@ -118,14 +119,28 @@ export default function LabelPage() {
     setCorrectedText(currentLine.corrected_text || currentLine.auto_text || "");
   }, [currentLineIndex, currentLine]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!currentLine) return;
-    const updatedLines = [...lines];
-    updatedLines[currentLineIndex] = {
-      ...updatedLines[currentLineIndex],
-      corrected_text: correctedText,
-    };
-    setLines(updatedLines);
+    setIsExtractingText(true);
+    try {
+      await saveCorrectedText(currentLine.id, correctedText);
+      const updatedLines = [...lines];
+      updatedLines[currentLineIndex] = {
+        ...updatedLines[currentLineIndex],
+        corrected_text: correctedText,
+      };
+      setLines(updatedLines);
+      showToast({
+        message: "✅ Correction saved",
+        variant: "success",
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to save correction";
+      showToast({ message, variant: "error" });
+    } finally {
+      setIsExtractingText(false);
+    }
   };
 
   const handleVerify = () => {
@@ -314,10 +329,19 @@ export default function LabelPage() {
             onClick={handleSave}
             variant="outline"
             className="gap-2 flex-1 bg-transparent"
-            disabled={!currentLine}
+            disabled={!currentLine || isExtractingText}
           >
-            <Save className="h-4 w-4" />
-            Save Correction
+            {isExtractingText ? (
+              <>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                Save Correction
+              </>
+            )}
           </Button>
           <Button
             onClick={handleVerify}
