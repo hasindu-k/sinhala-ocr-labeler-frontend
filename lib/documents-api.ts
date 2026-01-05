@@ -44,3 +44,12 @@ export async function extractLinesFromPage(documentId: string, pageId: string) {
     }
   );
 }
+
+export async function extractLinesFromPages(documentId: string) {
+  return apiFetch<{
+    document_id: string;
+    total_lines_extracted: number;
+  }>(`${API_BASE_URL}/documents/${documentId}/extract-lines`, {
+    method: "POST",
+  });
+}

@@ -6,6 +6,7 @@ export const getStatusBadge = (status: string) => {
   switch (normalized) {
     case "processed":
     case "completed":
+    case "extracted":
       return (
         <Badge className="gap-1 bg-green-500/10 text-green-700 hover:bg-green-500/20 dark:text-green-400">
           <CheckCircle2 className="h-3 w-3" />

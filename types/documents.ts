@@ -12,7 +12,6 @@ export interface DocumentResponse {
 }
 
 export interface LineExtractionResponse {
-  status: string;
-  page_id: string;
-  lines_extracted: number;
+  document_id: string;
+  total_lines_extracted: number;
 }

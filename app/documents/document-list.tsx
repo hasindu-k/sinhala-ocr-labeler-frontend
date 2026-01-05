@@ -17,6 +17,7 @@ interface DocumentListProps {
   documents: DocumentResponse[];
   onSelectDocument: (doc: DocumentResponse) => void;
   onSelectConvertPages: (id: string) => void;
+  onSelectExtractLines: (id: string) => void;
   onDelete: (id: string) => void;
 }
 
@@ -25,6 +26,7 @@ export default function DocumentList({
   documents,
   onSelectDocument,
   onSelectConvertPages,
+  onSelectExtractLines,
   onDelete,
 }: Readonly<DocumentListProps>) {
   // 1. Loading State
@@ -116,15 +118,30 @@ export default function DocumentList({
             {/* Actions Area */}
             <div className="flex items-center gap-2">
               {/* DESKTOP ONLY: Visible Button */}
-              <Button
-                variant="outline"
-                size="sm"
-                className="hidden md:flex h-8 sm:h-10"
-                onClick={() => onSelectConvertPages(doc.id)}
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                Convert Pages
-              </Button>
+              {doc.status == "uploaded" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="hidden md:flex h-8 sm:h-10"
+                  onClick={() => onSelectConvertPages(doc.id)}
+                >
+                  <FileText className="mr-2 h-4 w-4" />
+                  Convert Pages
+                </Button>
+              )}
+              {doc.status == "processed" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="hidden md:flex h-8 sm:h-10"
+                  onClick={() => {
+                    onSelectExtractLines(doc.id);
+                  }}
+                >
+                  <FileText className="mr-2 h-4 w-4" />
+                  Extract Lines
+                </Button>
+              )}
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

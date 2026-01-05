@@ -21,6 +21,7 @@ import {
   listDocuments,
   deleteDocument,
   convertDocumentPages,
+  extractLinesFromPages,
 } from "@/lib/documents-api";
 import type { DocumentResponse } from "@/types/documents";
 import { showToast } from "@/lib/toast";
@@ -82,6 +83,31 @@ export default function DocumentsPage() {
     }
   };
 
+  const handleExtractLines = async (documentId: string) => {
+    try {
+      const response = await extractLinesFromPages(documentId);
+      setDocuments((prev) =>
+        prev.map((doc) =>
+          doc.id === documentId
+            ? {
+                ...doc,
+                status: "extracted",
+                lines_extracted: response.total_lines_extracted,
+              }
+            : doc
+        )
+      );
+      showToast({
+        message: `Successfully extracted ${response.total_lines_extracted} lines`,
+        variant: "success",
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to extract lines";
+      showToast({ message, variant: "error" });
+    }
+  };
+
   const filteredDocuments = useMemo(
     () =>
       documents.filter((doc) =>
@@ -131,6 +157,7 @@ export default function DocumentsPage() {
                 documents={filteredDocuments}
                 onSelectDocument={setSelectedDoc}
                 onSelectConvertPages={handleConvertPages}
+                onSelectExtractLines={handleExtractLines}
                 onDelete={handleDelete}
               />
             </CardContent>
