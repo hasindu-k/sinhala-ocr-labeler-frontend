@@ -34,6 +34,8 @@ export default function DocumentsPage() {
   const [documents, setDocuments] = useState<DocumentResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<DocumentResponse | null>(null);
+  const [isConverting, setIsConverting] = useState(false);
+  const [isExtracting, setIsExtracting] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -66,6 +68,7 @@ export default function DocumentsPage() {
 
   const handleConvertPages = async (documentId: string) => {
     try {
+      setIsConverting(true);
       await convertDocumentPages(documentId);
       setDocuments((prev) =>
         prev.map((doc) =>
@@ -80,11 +83,14 @@ export default function DocumentsPage() {
       const message =
         error instanceof Error ? error.message : "Failed to convert pages";
       showToast({ message, variant: "error" });
+    } finally {
+      setIsConverting(false);
     }
   };
 
   const handleExtractLines = async (documentId: string) => {
     try {
+      setIsExtracting(true);
       const response = await extractLinesFromPages(documentId);
       setDocuments((prev) =>
         prev.map((doc) =>
@@ -105,6 +111,8 @@ export default function DocumentsPage() {
       const message =
         error instanceof Error ? error.message : "Failed to extract lines";
       showToast({ message, variant: "error" });
+    } finally {
+      setIsExtracting(false);
     }
   };
 
@@ -159,6 +167,8 @@ export default function DocumentsPage() {
                 onSelectConvertPages={handleConvertPages}
                 onSelectExtractLines={handleExtractLines}
                 onDelete={handleDelete}
+                isConverting={isConverting}
+                isExtracting={isExtracting}
               />
             </CardContent>
           </Card>

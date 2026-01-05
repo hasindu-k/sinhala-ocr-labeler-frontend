@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { NavHeader } from "@/components/nav-header";
 import {
   Card,
@@ -43,6 +44,8 @@ import { showToast } from "@/lib/toast";
 import { DocumentResponse, LineResponse } from "@/types/documents";
 
 export default function LabelPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [currentLineIndex, setCurrentLineIndex] = useState(0);
   const [lines, setLines] = useState<LineResponse[]>([]);
   const [correctedText, setCorrectedText] = useState("");
@@ -53,6 +56,7 @@ export default function LabelPage() {
   const [isLoadingLines, setIsLoadingLines] = useState(false);
   const [isExtractingText, setIsExtractingText] = useState(false);
   const [isExtractingLineText, setIsExtractingLineText] = useState(false);
+  const initializedFromUrl = useRef(false);
 
   const currentLine = lines[currentLineIndex];
 
@@ -74,7 +78,9 @@ export default function LabelPage() {
         const data = await listDocuments();
         setDocuments(data);
         if (data.length > 0) {
-          setSelectedDocument((prev) => prev || data[0].id);
+          const docFromQuery = searchParams.get("doc");
+          const matchedDoc = data.find((d) => d.id === docFromQuery);
+          setSelectedDocument((prev) => prev || matchedDoc?.id || data[0].id);
         }
       } catch (error) {
         const message =
@@ -85,21 +91,28 @@ export default function LabelPage() {
       }
     };
     load();
-  }, []);
+  }, [searchParams]);
 
   // Load lines for selected document
   useEffect(() => {
     const loadLines = async () => {
       if (!selectedDocument) return;
+      initializedFromUrl.current = false;
       setIsLoadingLines(true);
       try {
         const data = await listDocumentLines(selectedDocument);
         setLines(data);
-        setCurrentLineIndex(0);
-        const firstLine = data[0];
+        const lineParam = searchParams.get("line");
+        const requestedIndex = lineParam ? parseInt(lineParam, 10) : 0;
+        const safeIndex = Number.isNaN(requestedIndex)
+          ? 0
+          : Math.min(Math.max(requestedIndex, 0), Math.max(data.length - 1, 0));
+        setCurrentLineIndex(safeIndex);
+        const activeLine = data[safeIndex];
         setCorrectedText(
-          firstLine?.corrected_text || firstLine?.auto_text || ""
+          activeLine?.corrected_text || activeLine?.auto_text || ""
         );
+        initializedFromUrl.current = true;
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Failed to load lines";
@@ -109,7 +122,30 @@ export default function LabelPage() {
       }
     };
     loadLines();
-  }, [selectedDocument]);
+  }, [searchParams, selectedDocument]);
+
+  // Keep URL query in sync with current document and line for reload/deep-link
+  useEffect(() => {
+    if (!selectedDocument || !initializedFromUrl.current) return;
+    const docParam = searchParams.get("doc") || "";
+    const lineParam = searchParams.get("line") || "";
+    const nextLine = String(currentLineIndex);
+
+    let changed = false;
+    const params = new URLSearchParams(searchParams.toString());
+    if (docParam !== selectedDocument) {
+      params.set("doc", selectedDocument);
+      changed = true;
+    }
+    if (lineParam !== nextLine) {
+      params.set("line", nextLine);
+      changed = true;
+    }
+
+    if (changed) {
+      router.replace(`?${params.toString()}`, { scroll: false });
+    }
+  }, [currentLineIndex, router, searchParams, selectedDocument]);
 
   // Sync corrected text when current line changes
   useEffect(() => {

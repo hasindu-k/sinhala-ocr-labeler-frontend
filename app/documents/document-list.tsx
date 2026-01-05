@@ -6,7 +6,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { DocumentResponse } from "@/types/documents";
-import { FileText, MoreVertical, Trash2, Eye } from "lucide-react";
+import { FileText, MoreVertical, Trash2, Eye, Loader2 } from "lucide-react";
 import { formatDate, getVerificationProgress } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,8 @@ interface DocumentListProps {
   onSelectConvertPages: (id: string) => void;
   onSelectExtractLines: (id: string) => void;
   onDelete: (id: string) => void;
+  isConverting: boolean;
+  isExtracting: boolean;
 }
 
 export default function DocumentList({
@@ -28,6 +30,8 @@ export default function DocumentList({
   onSelectConvertPages,
   onSelectExtractLines,
   onDelete,
+  isConverting,
+  isExtracting,
 }: Readonly<DocumentListProps>) {
   // 1. Loading State
   if (isLoading) {
@@ -124,9 +128,14 @@ export default function DocumentList({
                   size="sm"
                   className="hidden md:flex h-8 sm:h-10"
                   onClick={() => onSelectConvertPages(doc.id)}
+                  disabled={isConverting}
                 >
-                  <FileText className="mr-2 h-4 w-4" />
-                  Convert Pages
+                  {isConverting ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <FileText className="mr-2 h-4 w-4" />
+                  )}
+                  {isConverting ? "Converting..." : "Convert Pages"}
                 </Button>
               )}
               {doc.status == "processed" && (
@@ -137,9 +146,14 @@ export default function DocumentList({
                   onClick={() => {
                     onSelectExtractLines(doc.id);
                   }}
+                  disabled={isExtracting}
                 >
-                  <FileText className="mr-2 h-4 w-4" />
-                  Extract Lines
+                  {isExtracting ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <FileText className="mr-2 h-4 w-4" />
+                  )}
+                  {isExtracting ? "Extracting..." : "Extract Lines"}
                 </Button>
               )}
 
@@ -163,19 +177,29 @@ export default function DocumentList({
                   <DropdownMenuItem
                     className="md:hidden"
                     onClick={() => onSelectConvertPages(doc.id)}
+                    disabled={isConverting}
                   >
-                    <FileText className="mr-2 h-4 w-4" />
-                    Convert Pages
+                    {isConverting ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <FileText className="mr-2 h-4 w-4" />
+                    )}
+                    {isConverting ? "Converting..." : "Convert Pages"}
                   </DropdownMenuItem>
 
                   <DropdownMenuItem
+                    className="md:hidden"
                     onClick={() => {
-                      // Extract lines would be called here
-                      // Placeholder for now
+                      onSelectExtractLines(doc.id);
                     }}
+                    disabled={isExtracting}
                   >
-                    <FileText className="mr-2 h-4 w-4" />
-                    Extract Lines
+                    {isExtracting ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <FileText className="mr-2 h-4 w-4" />
+                    )}
+                    {isExtracting ? "Extracting..." : "Extract Lines"}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
