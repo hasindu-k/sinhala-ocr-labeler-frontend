@@ -1,6 +1,6 @@
 import { apiFetch } from "@/lib/client";
 import { API_BASE_URL } from "@/lib/config";
-import type { DocumentResponse } from "@/types/documents";
+import type { DocumentResponse, LineResponse } from "@/types/documents";
 
 export async function uploadDocument(file: File) {
   const formData = new FormData();
@@ -52,4 +52,26 @@ export async function extractLinesFromPages(documentId: string) {
   }>(`${API_BASE_URL}/documents/${documentId}/extract-lines`, {
     method: "POST",
   });
+}
+
+export async function listDocumentLines(
+  documentId: string,
+  params?: { verified?: boolean; page_num?: number; assigned_to?: string }
+) {
+  const search = new URLSearchParams();
+  if (params?.verified !== undefined)
+    search.set("verified", String(params.verified));
+  if (params?.page_num !== undefined)
+    search.set("page_num", String(params.page_num));
+  if (params?.assigned_to) search.set("assigned_to", params.assigned_to);
+
+  const query = search.toString();
+  const suffix = query ? `?${query}` : "";
+
+  return apiFetch<LineResponse[]>(
+    `${API_BASE_URL}/documents/${documentId}/lines${suffix}`,
+    {
+      method: "GET",
+    }
+  );
 }

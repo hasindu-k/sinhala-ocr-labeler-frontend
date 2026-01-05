@@ -15,3 +15,13 @@ export interface LineExtractionResponse {
   document_id: string;
   total_lines_extracted: number;
 }
+
+export interface LineResponse {
+  id: string;
+  page_id: string;
+  image_path: string;
+  auto_text: string | null;
+  corrected_text: string | null;
+  verified: boolean;
+  reviewer_id: string | null;
+}

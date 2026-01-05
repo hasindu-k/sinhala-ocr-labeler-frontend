@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { NavHeader } from "@/components/nav-header";
 import {
   Card,
@@ -31,81 +31,32 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { listDocuments } from "@/lib/documents-api";
+import { listDocumentLines, listDocuments } from "@/lib/documents-api";
 import { showToast } from "@/lib/toast";
-import { DocumentResponse } from "@/types/documents";
-
-// Mock data
-const mockLines = [
-  {
-    id: "1",
-    lineNumber: 1,
-    imageUrl: "/handwritten-text-line-1.jpg",
-    autoText: "In the year of our Lord eighteen hundred and ninety",
-    correctedText: "",
-    verified: false,
-    documentName: "historical-manuscript-1890.pdf",
-    pageNumber: 1,
-  },
-  {
-    id: "2",
-    lineNumber: 2,
-    imageUrl: "/handwritten-text-line-2.jpg",
-    autoText: "three, on the fifteenth day of March, at the hour",
-    correctedText: "",
-    verified: false,
-    documentName: "historical-manuscript-1890.pdf",
-    pageNumber: 1,
-  },
-  {
-    id: "3",
-    lineNumber: 3,
-    imageUrl: "/handwritten-text-line-3.jpg",
-    autoText: "of ten o'clock in the forenoon, before me personally",
-    correctedText: "",
-    verified: false,
-    documentName: "historical-manuscript-1890.pdf",
-    pageNumber: 1,
-  },
-];
-
-const mockDocuments = [
-  {
-    id: "1",
-    name: "historical-manuscript-1890.pdf",
-    totalLines: 1250,
-    verifiedLines: 890,
-  },
-  {
-    id: "2",
-    name: "census-records-1920.pdf",
-    totalLines: 3200,
-    verifiedLines: 3200,
-  },
-  {
-    id: "3",
-    name: "legal-document-bundle.pdf",
-    totalLines: 2100,
-    verifiedLines: 450,
-  },
-];
+import { DocumentResponse, LineResponse } from "@/types/documents";
 
 export default function LabelPage() {
   const [currentLineIndex, setCurrentLineIndex] = useState(0);
-  const [lines, setLines] = useState(mockLines);
-  const [correctedText, setCorrectedText] = useState(
-    lines[currentLineIndex].correctedText || lines[currentLineIndex].autoText
-  );
-  const [selectedDocument, setSelectedDocument] = useState("1");
+  const [lines, setLines] = useState<LineResponse[]>([]);
+  const [correctedText, setCorrectedText] = useState("");
+  const [selectedDocument, setSelectedDocument] = useState<string>("");
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [documents, setDocuments] = useState<DocumentResponse[]>([]);
+  const [isLoadingLines, setIsLoadingLines] = useState(false);
 
   const currentLine = lines[currentLineIndex];
-  const selectedDoc = mockDocuments.find((d) => d.id === selectedDocument);
-  const progress = selectedDoc
-    ? Math.round((selectedDoc.verifiedLines / selectedDoc.totalLines) * 100)
-    : 0;
+
+  const selectedDoc = useMemo(
+    () => documents.find((d) => d.id === selectedDocument) || null,
+    [documents, selectedDocument]
+  );
+
+  const progress = useMemo(() => {
+    if (lines.length === 0) return 0;
+    const verifiedCount = lines.filter((l) => l.verified).length;
+    return Math.round((verifiedCount / lines.length) * 100);
+  }, [lines]);
 
   useEffect(() => {
     const load = async () => {
@@ -113,6 +64,9 @@ export default function LabelPage() {
       try {
         const data = await listDocuments();
         setDocuments(data);
+        if (data.length > 0) {
+          setSelectedDocument((prev) => prev || data[0].id);
+        }
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Failed to load documents";
@@ -124,16 +78,57 @@ export default function LabelPage() {
     load();
   }, []);
 
+  // Load lines for selected document
+  useEffect(() => {
+    const loadLines = async () => {
+      if (!selectedDocument) return;
+      setIsLoadingLines(true);
+      try {
+        const data = await listDocumentLines(selectedDocument);
+        setLines(data);
+        setCurrentLineIndex(0);
+        const firstLine = data[0];
+        setCorrectedText(
+          firstLine?.corrected_text || firstLine?.auto_text || ""
+        );
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to load lines";
+        showToast({ message, variant: "error" });
+      } finally {
+        setIsLoadingLines(false);
+      }
+    };
+    loadLines();
+  }, [selectedDocument]);
+
+  // Sync corrected text when current line changes
+  useEffect(() => {
+    if (!currentLine) {
+      setCorrectedText("");
+      return;
+    }
+    setCorrectedText(currentLine.corrected_text || currentLine.auto_text || "");
+  }, [currentLineIndex, currentLine]);
+
   const handleSave = () => {
+    if (!currentLine) return;
     const updatedLines = [...lines];
-    updatedLines[currentLineIndex].correctedText = correctedText;
+    updatedLines[currentLineIndex] = {
+      ...updatedLines[currentLineIndex],
+      corrected_text: correctedText,
+    };
     setLines(updatedLines);
   };
 
   const handleVerify = () => {
+    if (!currentLine) return;
     const updatedLines = [...lines];
-    updatedLines[currentLineIndex].correctedText = correctedText;
-    updatedLines[currentLineIndex].verified = true;
+    updatedLines[currentLineIndex] = {
+      ...updatedLines[currentLineIndex],
+      corrected_text: correctedText,
+      verified: true,
+    };
     setLines(updatedLines);
     goToNextLine();
   };
@@ -142,9 +137,6 @@ export default function LabelPage() {
     if (currentLineIndex > 0) {
       const newIndex = currentLineIndex - 1;
       setCurrentLineIndex(newIndex);
-      setCorrectedText(
-        lines[newIndex].correctedText || lines[newIndex].autoText
-      );
     }
   };
 
@@ -152,14 +144,126 @@ export default function LabelPage() {
     if (currentLineIndex < lines.length - 1) {
       const newIndex = currentLineIndex + 1;
       setCurrentLineIndex(newIndex);
-      setCorrectedText(
-        lines[newIndex].correctedText || lines[newIndex].autoText
-      );
     }
   };
 
   const handleSkip = () => {
     goToNextLine();
+  };
+
+  const renderProgressContent = () => {
+    if (isLoadingLines) {
+      return (
+        <div className="text-sm text-muted-foreground">Loading lines...</div>
+      );
+    }
+    if (lines.length === 0) {
+      return (
+        <div className="text-sm text-muted-foreground">
+          No lines available. Convert pages and extract lines first.
+        </div>
+      );
+    }
+
+    const verifiedCount = lines.filter((l) => l.verified).length;
+
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">Document Progress</span>
+          <span className="font-medium">
+            {verifiedCount.toLocaleString()} / {lines.length.toLocaleString()}{" "}
+            lines ({progress}%)
+          </span>
+        </div>
+        <Progress value={progress} className="h-2" />
+      </div>
+    );
+  };
+
+  const renderLineContent = () => {
+    if (isLoadingLines) {
+      return (
+        <div className="text-sm text-muted-foreground">Loading lines...</div>
+      );
+    }
+    if (!currentLine) {
+      return (
+        <div className="text-sm text-muted-foreground">
+          No lines available. Convert pages and extract lines first.
+        </div>
+      );
+    }
+
+    return (
+      <>
+        <div className="space-y-2">
+          <p className="text-sm font-medium">Line Image</p>
+          <div className="rounded-lg border bg-muted/30 p-4 flex items-center justify-center">
+            <img
+              src={currentLine.image_path || "/placeholder.svg"}
+              alt={`Line ${currentLineIndex + 1}`}
+              className="max-h-24 w-auto"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-sm font-medium">Auto-detected Text</p>
+          <div className="rounded-lg border bg-secondary/50 p-4">
+            <p className="text-sm font-mono leading-relaxed">
+              {currentLine.auto_text || (
+                <span className="text-muted-foreground italic">
+                  No text detected
+                </span>
+              )}
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="corrected-text" className="text-sm font-medium">
+            Corrected Text
+          </label>
+          <Textarea
+            id="corrected-text"
+            value={correctedText}
+            onChange={(e) => setCorrectedText(e.target.value)}
+            placeholder="Enter or correct the text from the image..."
+            className="min-h-24 font-mono text-sm"
+          />
+        </div>
+
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Button
+            onClick={handleSave}
+            variant="outline"
+            className="gap-2 flex-1 bg-transparent"
+            disabled={!currentLine}
+          >
+            <Save className="h-4 w-4" />
+            Save Correction
+          </Button>
+          <Button
+            onClick={handleVerify}
+            className="gap-2 flex-1"
+            disabled={!currentLine}
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            Verify & Next
+          </Button>
+          <Button
+            onClick={handleSkip}
+            variant="outline"
+            className="gap-2 bg-transparent"
+            disabled={!currentLine}
+          >
+            <SkipForward className="h-4 w-4" />
+            Skip
+          </Button>
+        </div>
+      </>
+    );
   };
 
   return (
@@ -225,36 +329,34 @@ export default function LabelPage() {
                 <Select
                   value={selectedDocument}
                   onValueChange={setSelectedDocument}
+                  disabled={documents.length === 0 || isLoading}
                 >
                   <SelectTrigger className="w-full md:w-80">
-                    <SelectValue />
+                    <span className="flex-1 truncate text-left">
+                      <SelectValue placeholder="Select a document" />
+                    </span>
                   </SelectTrigger>
-                  <SelectContent>
-                    {documents.map((doc) => (
-                      <SelectItem key={doc.id} value={doc.id}>
-                        {doc.original_filename || "Untitled"}
+
+                  <SelectContent className="max-h-72">
+                    {documents.length === 0 ? (
+                      <SelectItem value="no-docs" disabled>
+                        No documents available
                       </SelectItem>
-                    ))}
+                    ) : (
+                      documents.map((doc) => (
+                        <SelectItem key={doc.id} value={doc.id}>
+                          <span className="block truncate max-w-[80vw] md:max-w-72">
+                            {doc.original_filename || "Untitled"}
+                          </span>
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
             </CardHeader>
-            {selectedDoc && (
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      Document Progress
-                    </span>
-                    <span className="font-medium">
-                      {selectedDoc.verifiedLines.toLocaleString()} /{" "}
-                      {selectedDoc.totalLines.toLocaleString()} lines (
-                      {progress}%)
-                    </span>
-                  </div>
-                  <Progress value={progress} className="h-2" />
-                </div>
-              </CardContent>
+            {selectedDocument && (
+              <CardContent>{renderProgressContent()}</CardContent>
             )}
           </Card>
 
@@ -265,93 +367,32 @@ export default function LabelPage() {
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <CardTitle>
-                      Line {currentLine.lineNumber} of {lines.length}
+                      {currentLine
+                        ? `Line ${currentLineIndex + 1} of ${lines.length}`
+                        : "No line selected"}
                     </CardTitle>
-                    {currentLine.verified ? (
-                      <Badge className="gap-1 bg-green-500/10 text-green-700 hover:bg-green-500/20 dark:text-green-400">
-                        <CheckCircle2 className="h-3 w-3" />
-                        Verified
-                      </Badge>
-                    ) : (
-                      <Badge className="gap-1" variant="secondary">
-                        <AlertCircle className="h-3 w-3" />
-                        Unverified
-                      </Badge>
-                    )}
+                    {currentLine &&
+                      (currentLine.verified ? (
+                        <Badge className="gap-1 bg-green-500/10 text-green-700 hover:bg-green-500/20 dark:text-green-400">
+                          <CheckCircle2 className="h-3 w-3" />
+                          Verified
+                        </Badge>
+                      ) : (
+                        <Badge className="gap-1" variant="secondary">
+                          <AlertCircle className="h-3 w-3" />
+                          Unverified
+                        </Badge>
+                      ))}
                   </div>
                   <CardDescription>
-                    {currentLine.documentName} - Page {currentLine.pageNumber}
+                    {selectedDoc?.original_filename || "Select a document"}
                   </CardDescription>
                 </div>
                 <FileText className="h-5 w-5 text-muted-foreground" />
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Line Image */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Line Image</label>
-                <div className="rounded-lg border bg-muted/30 p-4 flex items-center justify-center">
-                  <img
-                    src={currentLine.imageUrl || "/placeholder.svg"}
-                    alt={`Line ${currentLine.lineNumber}`}
-                    className="max-h-24 w-auto"
-                  />
-                </div>
-              </div>
-
-              {/* Auto-detected Text */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  Auto-detected Text
-                </label>
-                <div className="rounded-lg border bg-secondary/50 p-4">
-                  <p className="text-sm font-mono leading-relaxed">
-                    {currentLine.autoText || (
-                      <span className="text-muted-foreground italic">
-                        No text detected
-                      </span>
-                    )}
-                  </p>
-                </div>
-              </div>
-
-              {/* Corrected Text Input */}
-              <div className="space-y-2">
-                <label htmlFor="corrected-text" className="text-sm font-medium">
-                  Corrected Text
-                </label>
-                <Textarea
-                  id="corrected-text"
-                  value={correctedText}
-                  onChange={(e) => setCorrectedText(e.target.value)}
-                  placeholder="Enter or correct the text from the image..."
-                  className="min-h-24 font-mono text-sm"
-                />
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <Button
-                  onClick={handleSave}
-                  variant="outline"
-                  className="gap-2 flex-1 bg-transparent"
-                >
-                  <Save className="h-4 w-4" />
-                  Save Correction
-                </Button>
-                <Button onClick={handleVerify} className="gap-2 flex-1">
-                  <CheckCircle2 className="h-4 w-4" />
-                  Verify & Next
-                </Button>
-                <Button
-                  onClick={handleSkip}
-                  variant="outline"
-                  className="gap-2 bg-transparent"
-                >
-                  <SkipForward className="h-4 w-4" />
-                  Skip
-                </Button>
-              </div>
+              {renderLineContent()}
             </CardContent>
           </Card>
 
@@ -361,7 +402,7 @@ export default function LabelPage() {
               <div className="flex items-center justify-between">
                 <Button
                   onClick={goToPreviousLine}
-                  disabled={currentLineIndex === 0}
+                  disabled={currentLineIndex === 0 || lines.length === 0}
                   variant="outline"
                   className="gap-2 bg-transparent"
                 >
@@ -370,12 +411,16 @@ export default function LabelPage() {
                 </Button>
 
                 <span className="text-sm text-muted-foreground whitespace-nowrap">
-                  {currentLineIndex + 1} of {lines.length}
+                  {lines.length === 0
+                    ? "0 of 0"
+                    : `${currentLineIndex + 1} of ${lines.length}`}
                 </span>
 
                 <Button
                   onClick={goToNextLine}
-                  disabled={currentLineIndex === lines.length - 1}
+                  disabled={
+                    lines.length === 0 || currentLineIndex === lines.length - 1
+                  }
                   variant="outline"
                   className="gap-2 bg-transparent"
                 >
