@@ -5,6 +5,7 @@ import type React from "react";
 import Link from "next/link";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { showToast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,8 +38,13 @@ export default function SignupPage() {
     setIsLoading(true);
     try {
       await signup(name, email, password, role);
+      showToast({ message: "Account created", variant: "success" });
     } catch (error) {
-      alert("Signup failed. Please try again.");
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Signup failed. Please try again.";
+      showToast({ message, variant: "error" });
     } finally {
       setIsLoading(false);
     }

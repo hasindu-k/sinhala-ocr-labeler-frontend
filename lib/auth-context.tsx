@@ -8,12 +8,25 @@ import {
   ReactNode,
 } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { signin, signup as apiSignup, signout } from "@/lib/auth-api";
+import {
+  clearAuthTokens,
+  clearStoredUser,
+  getAuthTokens,
+  getStoredUser,
+  isAccessTokenExpired,
+  setAuthTokens,
+  setStoredUser,
+} from "@/lib/localStore";
 
 interface User {
   id: string;
   name: string;
   email: string;
   role: string;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface AuthContextType {
@@ -39,9 +52,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check if user is logged in on mount
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+    const storedUser = getStoredUser<User>();
+    const tokens = getAuthTokens();
+
+    if (storedUser && tokens && !isAccessTokenExpired()) {
+      setUser(storedUser);
+    } else if (!tokens) {
+      clearStoredUser();
     }
     setIsLoading(false);
   }, []);
@@ -63,19 +80,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, pathname, isLoading, router]);
 
   const login = async (email: string, password: string) => {
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    // Mock user data
-    const mockUser: User = {
-      id: "1",
-      name: "John Doe",
-      email: email,
-      role: "admin",
+    const data = await signin(email, password);
+    const authUser: User = {
+      id: data.user.id,
+      name: data.user.name,
+      email: data.user.email,
+      role: data.user.role,
+      is_active: data.user.is_active,
+      created_at: data.user.created_at,
+      updated_at: data.user.updated_at,
     };
 
-    setUser(mockUser);
-    localStorage.setItem("user", JSON.stringify(mockUser));
+    setUser(authUser);
+    setStoredUser(authUser);
+    setAuthTokens({
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+    });
     router.push("/documents");
   };
 
@@ -85,26 +106,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password: string,
     role: string
   ) => {
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    // Mock user data
-    const mockUser: User = {
-      id: Date.now().toString(),
-      name: name,
-      email: email,
-      role: role,
+    const data = await apiSignup({ name, email, password, role });
+    const authUser: User = {
+      id: data.user.id,
+      name: data.user.name,
+      email: data.user.email,
+      role: data.user.role,
+      is_active: data.user.is_active,
+      created_at: data.user.created_at,
+      updated_at: data.user.updated_at,
     };
 
-    setUser(mockUser);
-    localStorage.setItem("user", JSON.stringify(mockUser));
+    setUser(authUser);
+    setStoredUser(authUser);
+    setAuthTokens({
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+    });
     router.push("/documents");
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("user");
-    router.push("/login");
+  const logout = async () => {
+    try {
+      await signout();
+    } catch (error) {
+      console.warn("Signout request failed", error);
+    } finally {
+      setUser(null);
+      clearStoredUser();
+      clearAuthTokens();
+      router.push("/login");
+    }
   };
 
   return (
