@@ -37,6 +37,7 @@ import {
   listDocuments,
   extractTextFromLine,
   saveCorrectedText,
+  verifyLine,
 } from "@/lib/documents-api";
 import { showToast } from "@/lib/toast";
 import { DocumentResponse, LineResponse } from "@/types/documents";
@@ -143,16 +144,30 @@ export default function LabelPage() {
     }
   };
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     if (!currentLine) return;
-    const updatedLines = [...lines];
-    updatedLines[currentLineIndex] = {
-      ...updatedLines[currentLineIndex],
-      corrected_text: correctedText,
-      verified: true,
-    };
-    setLines(updatedLines);
-    goToNextLine();
+    setIsExtractingText(true);
+    try {
+      await verifyLine(currentLine.id);
+      const updatedLines = [...lines];
+      updatedLines[currentLineIndex] = {
+        ...updatedLines[currentLineIndex],
+        corrected_text: correctedText,
+        verified: true,
+      };
+      setLines(updatedLines);
+      showToast({
+        message: "✅ Line verified",
+        variant: "success",
+      });
+      goToNextLine();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to verify line";
+      showToast({ message, variant: "error" });
+    } finally {
+      setIsExtractingText(false);
+    }
   };
 
   const goToPreviousLine = () => {
@@ -346,10 +361,24 @@ export default function LabelPage() {
           <Button
             onClick={handleVerify}
             className="gap-2 flex-1"
-            disabled={!currentLine}
+            disabled={!currentLine || isExtractingText || currentLine.verified}
           >
-            <CheckCircle2 className="h-4 w-4" />
-            Verify & Next
+            {isExtractingText ? (
+              <>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                Verifying...
+              </>
+            ) : currentLine?.verified ? (
+              <>
+                <CheckCircle2 className="h-4 w-4" />
+                Verified
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="h-4 w-4" />
+                Verify & Next
+              </>
+            )}
           </Button>
           <Button
             onClick={handleSkip}

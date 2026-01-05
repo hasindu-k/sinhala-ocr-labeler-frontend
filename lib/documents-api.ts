@@ -111,3 +111,13 @@ export async function saveCorrectedText(
     body: JSON.stringify({ corrected_text: correctedText }),
   });
 }
+
+export async function verifyLine(lineImageId: string) {
+  return apiFetch<{
+    status: string;
+    line_id: string;
+    verified: boolean;
+  }>(`${API_BASE_URL}/api/lines/${lineImageId}/verify`, {
+    method: "PUT",
+  });
+}
