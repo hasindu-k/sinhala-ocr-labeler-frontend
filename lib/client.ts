@@ -25,7 +25,7 @@ async function refreshAccessToken(): Promise<void> {
     throw new Error("No refresh token available");
   }
 
-  const response = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
+  const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refresh_token: authTokens.refresh_token }),

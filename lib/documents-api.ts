@@ -13,7 +13,7 @@ export async function uploadDocument(file: File) {
 }
 
 export async function listDocuments() {
-  return apiFetch<DocumentResponse[]>(`${API_BASE_URL}/documents`, {
+  return apiFetch<DocumentResponse[]>(`${API_BASE_URL}/documents/`, {
     method: "GET",
   });
 }
@@ -23,6 +23,15 @@ export async function deleteDocument(documentId: string) {
     `${API_BASE_URL}/documents/${documentId}`,
     {
       method: "DELETE",
+    }
+  );
+}
+
+export async function convertDocumentPages(documentId: string) {
+  return apiFetch<DocumentResponse>(
+    `${API_BASE_URL}/documents/${documentId}/convert-pages`,
+    {
+      method: "POST",
     }
   );
 }

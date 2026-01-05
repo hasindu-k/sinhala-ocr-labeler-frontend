@@ -33,7 +33,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { listDocuments, deleteDocument } from "@/lib/documents-api";
+import {
+  listDocuments,
+  deleteDocument,
+  convertDocumentPages,
+} from "@/lib/documents-api";
 import type { DocumentResponse } from "@/types/documents";
 import { showToast } from "@/lib/toast";
 
@@ -101,6 +105,7 @@ interface DocumentListProps {
   isLoading: boolean;
   documents: DocumentResponse[];
   onSelectDocument: (doc: DocumentResponse) => void;
+  onSelectConvertPages: (id: string) => void;
   onDelete: (id: string) => void;
 }
 
@@ -108,8 +113,9 @@ function DocumentList({
   isLoading,
   documents,
   onSelectDocument,
+  onSelectConvertPages,
   onDelete,
-}: DocumentListProps) {
+}: Readonly<DocumentListProps>) {
   // 1. Loading State
   if (isLoading) {
     return (
@@ -196,35 +202,59 @@ function DocumentList({
               </div>
             </div>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="shrink-0 h-8 w-8 sm:h-10 sm:w-10"
-                >
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onSelectDocument(doc)}>
-                  <Eye className="mr-2 h-4 w-4" />
-                  View Details
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Download className="mr-2 h-4 w-4" />
-                  Export Dataset
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="text-destructive"
-                  onClick={() => onDelete(doc.id)}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* Actions Area */}
+            <div className="flex items-center gap-2">
+              {/* DESKTOP ONLY: Visible Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="hidden md:flex h-8 sm:h-10"
+                onClick={() => onSelectConvertPages(doc.id)}
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                Convert Pages
+              </Button>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0 h-8 w-8 sm:h-10 sm:w-10"
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => onSelectDocument(doc)}>
+                    <Eye className="mr-2 h-4 w-4" />
+                    View Details
+                  </DropdownMenuItem>
+
+                  {/* MOBILE ONLY: Dropdown Item */}
+                  <DropdownMenuItem
+                    className="md:hidden"
+                    onClick={() => onSelectConvertPages(doc.id)}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    Convert Pages
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem>
+                    <Download className="mr-2 h-4 w-4" />
+                    Export Dataset
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onClick={() => onDelete(doc.id)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
       ))}
@@ -265,6 +295,25 @@ export default function DocumentsPage() {
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to delete document";
+      showToast({ message, variant: "error" });
+    }
+  };
+
+  const handleConvertPages = async (documentId: string) => {
+    try {
+      await convertDocumentPages(documentId);
+      setDocuments((prev) =>
+        prev.map((doc) =>
+          doc.id === documentId ? { ...doc, status: "processed" } : doc
+        )
+      );
+      showToast({
+        message: "All pages converted successfully",
+        variant: "success",
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to convert pages";
       showToast({ message, variant: "error" });
     }
   };
@@ -317,6 +366,7 @@ export default function DocumentsPage() {
                 isLoading={isLoading}
                 documents={filteredDocuments}
                 onSelectDocument={setSelectedDoc}
+                onSelectConvertPages={handleConvertPages}
                 onDelete={handleDelete}
               />
             </CardContent>
