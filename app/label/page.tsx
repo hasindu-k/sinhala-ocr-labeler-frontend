@@ -31,7 +31,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { listDocumentLines, listDocuments } from "@/lib/documents-api";
+import {
+  extractTextForDocument,
+  listDocumentLines,
+  listDocuments,
+  extractTextFromLine,
+} from "@/lib/documents-api";
 import { showToast } from "@/lib/toast";
 import { DocumentResponse, LineResponse } from "@/types/documents";
 
@@ -44,6 +49,8 @@ export default function LabelPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [documents, setDocuments] = useState<DocumentResponse[]>([]);
   const [isLoadingLines, setIsLoadingLines] = useState(false);
+  const [isExtractingText, setIsExtractingText] = useState(false);
+  const [isExtractingLineText, setIsExtractingLineText] = useState(false);
 
   const currentLine = lines[currentLineIndex];
 
@@ -151,6 +158,53 @@ export default function LabelPage() {
     goToNextLine();
   };
 
+  const handleExtractText = async () => {
+    if (!selectedDocument) return;
+    setIsExtractingText(true);
+    try {
+      await extractTextForDocument(selectedDocument);
+      showToast({ message: "Text extraction started", variant: "success" });
+      // Refresh lines to get updated auto_text
+      const refreshed = await listDocumentLines(selectedDocument);
+      setLines(refreshed);
+      setCurrentLineIndex(0);
+      const firstLine = refreshed[0];
+      setCorrectedText(firstLine?.corrected_text || firstLine?.auto_text || "");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to extract text";
+      showToast({ message, variant: "error" });
+    } finally {
+      setIsExtractingText(false);
+    }
+  };
+
+  const handleExtractLineText = async () => {
+    if (!currentLine) return;
+    setIsExtractingLineText(true);
+    try {
+      const result = await extractTextFromLine(currentLine.id);
+      // Update the current line with extracted text
+      const updatedLines = [...lines];
+      updatedLines[currentLineIndex] = {
+        ...updatedLines[currentLineIndex],
+        auto_text: result.extracted_text,
+      };
+      setLines(updatedLines);
+      setCorrectedText(result.extracted_text || "");
+      showToast({
+        message: "✅ Text extracted for this line",
+        variant: "success",
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to extract line text";
+      showToast({ message, variant: "error" });
+    } finally {
+      setIsExtractingLineText(false);
+    }
+  };
+
   const renderProgressContent = () => {
     if (isLoadingLines) {
       return (
@@ -209,7 +263,28 @@ export default function LabelPage() {
         </div>
 
         <div className="space-y-2">
-          <p className="text-sm font-medium">Auto-detected Text</p>
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium">Auto-detected Text</p>
+            <Button
+              onClick={handleExtractLineText}
+              variant="ghost"
+              size="sm"
+              disabled={!currentLine || isExtractingLineText}
+              className="gap-2 h-8"
+            >
+              {isExtractingLineText ? (
+                <>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                  Extracting...
+                </>
+              ) : (
+                <>
+                  <FileText className="h-4 w-4" />
+                  Extract Text
+                </>
+              )}
+            </Button>
+          </div>
           <div className="rounded-lg border bg-secondary/50 p-4">
             <p className="text-sm font-mono leading-relaxed">
               {currentLine.auto_text || (
@@ -326,33 +401,47 @@ export default function LabelPage() {
                     Choose a document to start labeling
                   </CardDescription>
                 </div>
-                <Select
-                  value={selectedDocument}
-                  onValueChange={setSelectedDocument}
-                  disabled={documents.length === 0 || isLoading}
-                >
-                  <SelectTrigger className="w-full md:w-80">
-                    <span className="flex-1 truncate text-left">
-                      <SelectValue placeholder="Select a document" />
-                    </span>
-                  </SelectTrigger>
+                <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+                  <Select
+                    value={selectedDocument}
+                    onValueChange={setSelectedDocument}
+                    disabled={documents.length === 0 || isLoading}
+                  >
+                    <SelectTrigger className="w-full md:w-80">
+                      <span className="flex-1 truncate text-left">
+                        <SelectValue placeholder="Select a document" />
+                      </span>
+                    </SelectTrigger>
 
-                  <SelectContent className="max-h-72">
-                    {documents.length === 0 ? (
-                      <SelectItem value="no-docs" disabled>
-                        No documents available
-                      </SelectItem>
-                    ) : (
-                      documents.map((doc) => (
-                        <SelectItem key={doc.id} value={doc.id}>
-                          <span className="block truncate max-w-[80vw] md:max-w-72">
-                            {doc.original_filename || "Untitled"}
-                          </span>
+                    <SelectContent className="max-h-72">
+                      {documents.length === 0 ? (
+                        <SelectItem value="no-docs" disabled>
+                          No documents available
                         </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
+                      ) : (
+                        documents.map((doc) => (
+                          <SelectItem key={doc.id} value={doc.id}>
+                            <span className="block truncate max-w-[80vw] md:max-w-72">
+                              {doc.original_filename || "Untitled"}
+                            </span>
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="whitespace-nowrap"
+                    disabled={
+                      !selectedDocument || isLoadingLines || isExtractingText
+                    }
+                    onClick={handleExtractText}
+                  >
+                    {isExtractingText ? "Extracting..." : "Extract Text"}
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             {selectedDocument && (

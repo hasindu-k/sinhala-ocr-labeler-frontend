@@ -54,6 +54,15 @@ export async function extractLinesFromPages(documentId: string) {
   });
 }
 
+export async function extractTextForDocument(documentId: string) {
+  return apiFetch<{ status: string }>(
+    `${API_BASE_URL}/documents/${documentId}/extract-text`,
+    {
+      method: "POST",
+    }
+  );
+}
+
 export async function listDocumentLines(
   documentId: string,
   params?: { verified?: boolean; page_num?: number; assigned_to?: string }
@@ -74,4 +83,16 @@ export async function listDocumentLines(
       method: "GET",
     }
   );
+}
+
+export async function extractTextFromLine(lineImageId: string) {
+  return apiFetch<{
+    status: string;
+    line_image_id: string;
+    extracted_text: string;
+    language: string;
+    processing_time_seconds: number;
+  }>(`${API_BASE_URL}/api/lines/${lineImageId}/extract-text`, {
+    method: "POST",
+  });
 }
