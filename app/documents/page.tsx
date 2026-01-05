@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { NavHeader } from "@/components/nav-header";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -24,9 +24,7 @@ import {
   Trash2,
   Eye,
   CheckCircle2,
-  Clock,
   AlertCircle,
-  X,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -35,95 +33,251 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { listDocuments, deleteDocument } from "@/lib/documents-api";
+import type { DocumentResponse } from "@/types/documents";
+import { showToast } from "@/lib/toast";
 
-// Mock data
-const mockDocuments = [
-  {
-    id: "1",
-    name: "historical-manuscript-1890.pdf",
-    uploadedAt: "2025-01-04T10:30:00",
-    pages: 45,
-    linesExtracted: 1250,
-    linesVerified: 890,
-    status: "processing",
-  },
-  {
-    id: "2",
-    name: "census-records-1920.pdf",
-    uploadedAt: "2025-01-03T14:20:00",
-    pages: 120,
-    linesExtracted: 3200,
-    linesVerified: 3200,
-    status: "completed",
-  },
-  {
-    id: "3",
-    name: "legal-document-bundle.pdf",
-    uploadedAt: "2025-01-02T09:15:00",
-    pages: 78,
-    linesExtracted: 2100,
-    linesVerified: 450,
-    status: "in-progress",
-  },
-  {
-    id: "4",
-    name: "newspaper-archive-1945.pdf",
-    uploadedAt: "2025-01-01T16:45:00",
-    pages: 200,
-    linesExtracted: 0,
-    linesVerified: 0,
-    status: "pending",
-  },
-];
+// --- Shared Helper Functions ---
+
+const formatDate = (value?: string) => {
+  if (!value) return "—";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString();
+};
+
+const getVerificationProgress = (verified?: number, extracted?: number) => {
+  const total = extracted ?? 0;
+  const done = verified ?? 0;
+  if (total === 0) return 0;
+  return Math.min(100, Math.max(0, Math.round((done / total) * 100)));
+};
+
+const getStatusBadge = (status: string) => {
+  const normalized = (status || "").toLowerCase();
+  switch (normalized) {
+    case "processed":
+    case "completed":
+      return (
+        <Badge className="gap-1 bg-green-500/10 text-green-700 hover:bg-green-500/20 dark:text-green-400">
+          <CheckCircle2 className="h-3 w-3" />
+          {status}
+        </Badge>
+      );
+    case "processing":
+    case "in-progress":
+      return (
+        <Badge className="gap-1 bg-blue-500/10 text-blue-700 hover:bg-blue-500/20 dark:text-blue-400">
+          <AlertCircle className="h-3 w-3" />
+          {status}
+        </Badge>
+      );
+    case "uploaded":
+      return (
+        <Badge className="gap-1 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 dark:text-amber-300">
+          <AlertCircle className="h-3 w-3" />
+          Uploaded
+        </Badge>
+      );
+    case "failed":
+      return (
+        <Badge className="gap-1 bg-destructive/10 text-destructive-foreground hover:bg-destructive/20">
+          <AlertCircle className="h-3 w-3" />
+          Failed
+        </Badge>
+      );
+    default:
+      return (
+        <Badge className="gap-1" variant="secondary">
+          <AlertCircle className="h-3 w-3" />
+          {status || "pending"}
+        </Badge>
+      );
+  }
+};
+
+// --- Extracted Component ---
+
+interface DocumentListProps {
+  isLoading: boolean;
+  documents: DocumentResponse[];
+  onSelectDocument: (doc: DocumentResponse) => void;
+  onDelete: (id: string) => void;
+}
+
+function DocumentList({
+  isLoading,
+  documents,
+  onSelectDocument,
+  onDelete,
+}: DocumentListProps) {
+  // 1. Loading State
+  if (isLoading) {
+    return (
+      <div className="py-6 text-center text-muted-foreground">
+        Loading documents...
+      </div>
+    );
+  }
+
+  // 2. Empty State
+  if (documents.length === 0) {
+    return (
+      <div className="py-6 text-center text-muted-foreground">
+        No documents found.
+      </div>
+    );
+  }
+
+  // 3. List State
+  return (
+    <div className="space-y-4">
+      {documents.map((doc) => (
+        <div
+          key={doc.id}
+          className="rounded-lg border p-3 sm:p-4 hover:bg-accent/50 transition-colors"
+        >
+          <div className="flex items-start justify-between gap-3 sm:gap-4">
+            <div className="flex items-start gap-3 flex-1 min-w-0">
+              <div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg border bg-card">
+                <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+              </div>
+
+              <div className="flex-1 min-w-0 space-y-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-semibold truncate text-sm sm:text-base">
+                    {doc.original_filename || "Untitled"}
+                  </h3>
+                  {getStatusBadge(doc.status)}
+                </div>
+
+                <div className="flex flex-wrap gap-y-1 gap-x-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
+                  <span>{doc.total_pages ?? 0} pages</span>
+                  <span className="hidden sm:inline">•</span>
+                  <span>Uploaded {formatDate(doc.created_at)}</span>
+                  {doc.updated_at ? (
+                    <>
+                      <span className="hidden sm:inline">•</span>
+                      <span>Updated {formatDate(doc.updated_at)}</span>
+                    </>
+                  ) : null}
+                </div>
+
+                {(doc.lines_extracted ?? 0) > 0 && (
+                  <div className="space-y-1 pt-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">
+                        Verification Progress
+                      </span>
+                      <span className="font-medium">
+                        {getVerificationProgress(
+                          doc.lines_verified,
+                          doc.lines_extracted
+                        )}
+                        %
+                      </span>
+                    </div>
+                    <Progress
+                      value={getVerificationProgress(
+                        doc.lines_verified,
+                        doc.lines_extracted
+                      )}
+                      className="h-1.5"
+                    />
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span>
+                        Extracted: {(doc.lines_extracted ?? 0).toLocaleString()}
+                      </span>
+                      <span>
+                        Verified: {(doc.lines_verified ?? 0).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0 h-8 w-8 sm:h-10 sm:w-10"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => onSelectDocument(doc)}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  View Details
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Download className="mr-2 h-4 w-4" />
+                  Export Dataset
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive"
+                  onClick={() => onDelete(doc.id)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// --- Main Page Component ---
 
 export default function DocumentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [documents] = useState(mockDocuments);
-  const [selectedDoc, setSelectedDoc] = useState<
-    (typeof mockDocuments)[0] | null
-  >(null);
+  const [documents, setDocuments] = useState<DocumentResponse[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedDoc, setSelectedDoc] = useState<DocumentResponse | null>(null);
 
-  const filteredDocuments = documents.filter((doc) =>
-    doc.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  useEffect(() => {
+    const load = async () => {
+      setIsLoading(true);
+      try {
+        const data = await listDocuments();
+        setDocuments(data);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to load documents";
+        showToast({ message, variant: "error" });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    load();
+  }, []);
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "completed":
-        return (
-          <Badge className="gap-1 bg-green-500/10 text-green-700 hover:bg-green-500/20 dark:text-green-400">
-            <CheckCircle2 className="h-3 w-3" />
-            Completed
-          </Badge>
-        );
-      case "in-progress":
-        return (
-          <Badge className="gap-1 bg-blue-500/10 text-blue-700 hover:bg-blue-500/20 dark:text-blue-400">
-            <Clock className="h-3 w-3" />
-            In Progress
-          </Badge>
-        );
-      case "processing":
-        return (
-          <Badge className="gap-1 bg-yellow-500/10 text-yellow-700 hover:bg-yellow-500/20 dark:text-yellow-400">
-            <Clock className="h-3 w-3" />
-            Processing
-          </Badge>
-        );
-      default:
-        return (
-          <Badge className="gap-1" variant="secondary">
-            <AlertCircle className="h-3 w-3" />
-            Pending
-          </Badge>
-        );
+  const handleDelete = async (documentId: string) => {
+    try {
+      await deleteDocument(documentId);
+      setDocuments((prev) => prev.filter((doc) => doc.id !== documentId));
+      showToast({ message: "Document deleted", variant: "success" });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to delete document";
+      showToast({ message, variant: "error" });
     }
   };
 
-  const getVerificationProgress = (verified: number, total: number) => {
-    if (total === 0) return 0;
-    return Math.round((verified / total) * 100);
-  };
+  const filteredDocuments = useMemo(
+    () =>
+      documents.filter((doc) =>
+        (doc.original_filename || "")
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase())
+      ),
+    [documents, searchQuery]
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -159,95 +313,12 @@ export default function DocumentsPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {filteredDocuments.map((doc) => {
-                  const progress = getVerificationProgress(
-                    doc.linesVerified,
-                    doc.linesExtracted
-                  );
-                  return (
-                    <div
-                      key={doc.id}
-                      className="rounded-lg border p-3 sm:p-4 hover:bg-accent/50 transition-colors"
-                    >
-                      <div className="flex items-start justify-between gap-3 sm:gap-4">
-                        <div className="flex items-start gap-3 flex-1 min-w-0">
-                          {/* UPDATED: Smaller icon on mobile (h-8 w-8) -> larger on desktop (sm:h-10) */}
-                          <div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg border bg-card">
-                            <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                          </div>
-
-                          <div className="flex-1 min-w-0 space-y-2">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h3 className="font-semibold truncate text-sm sm:text-base">
-                                {doc.name}
-                              </h3>
-                              {getStatusBadge(doc.status)}
-                            </div>
-
-                            {/* UPDATED: Responsive metadata. Tighter gap, hidden dots on mobile */}
-                            <div className="flex flex-wrap gap-y-1 gap-x-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
-                              <span>{doc.pages} pages</span>
-                              <span className="hidden sm:inline">•</span>
-                              <span>
-                                {doc.linesExtracted.toLocaleString()} lines
-                              </span>
-                              <span className="hidden sm:inline">•</span>
-                              <span>
-                                Uploaded{" "}
-                                {new Date(doc.uploadedAt).toLocaleDateString()}
-                              </span>
-                            </div>
-
-                            {doc.linesExtracted > 0 && (
-                              <div className="space-y-1 pt-1">
-                                <div className="flex items-center justify-between text-xs">
-                                  <span className="text-muted-foreground">
-                                    Verification Progress
-                                  </span>
-                                  <span className="font-medium">
-                                    {progress}%
-                                  </span>
-                                </div>
-                                <Progress value={progress} className="h-1.5" />
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="shrink-0 h-8 w-8 sm:h-10 sm:w-10"
-                            >
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => setSelectedDoc(doc)}
-                            >
-                              <Eye className="mr-2 h-4 w-4" />
-                              View Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Download className="mr-2 h-4 w-4" />
-                              Export Dataset
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive">
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <DocumentList
+                isLoading={isLoading}
+                documents={filteredDocuments}
+                onSelectDocument={setSelectedDoc}
+                onDelete={handleDelete}
+              />
             </CardContent>
           </Card>
         </div>
@@ -265,11 +336,10 @@ export default function DocumentsPage() {
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <DialogTitle className="text-xl sm:text-2xl break-words">
-                      {selectedDoc.name}
+                      {selectedDoc.original_filename || "Untitled"}
                     </DialogTitle>
                     <DialogDescription className="mt-2">
-                      Document uploaded on{" "}
-                      {new Date(selectedDoc.uploadedAt).toLocaleDateString()}
+                      Document uploaded on {formatDate(selectedDoc.created_at)}
                     </DialogDescription>
                   </div>
                 </div>
@@ -290,14 +360,16 @@ export default function DocumentsPage() {
                     <p className="text-sm font-medium text-muted-foreground">
                       Pages
                     </p>
-                    <p className="text-2xl font-bold">{selectedDoc.pages}</p>
+                    <p className="text-2xl font-bold">
+                      {selectedDoc.total_pages ?? 0}
+                    </p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">
                       Lines Extracted
                     </p>
                     <p className="text-2xl font-bold">
-                      {selectedDoc.linesExtracted.toLocaleString()}
+                      {(selectedDoc.lines_extracted ?? 0).toLocaleString()}
                     </p>
                   </div>
                   <div className="space-y-1">
@@ -305,7 +377,7 @@ export default function DocumentsPage() {
                       Lines Verified
                     </p>
                     <p className="text-2xl font-bold">
-                      {selectedDoc.linesVerified.toLocaleString()}
+                      {(selectedDoc.lines_verified ?? 0).toLocaleString()}
                     </p>
                   </div>
                   <div className="space-y-1">
@@ -313,35 +385,30 @@ export default function DocumentsPage() {
                       Verification Rate
                     </p>
                     <p className="text-2xl font-bold">
-                      {selectedDoc.linesExtracted > 0
-                        ? Math.round(
-                            (selectedDoc.linesVerified /
-                              selectedDoc.linesExtracted) *
-                              100
-                          )
-                        : 0}
+                      {getVerificationProgress(
+                        selectedDoc.lines_verified,
+                        selectedDoc.lines_extracted
+                      )}
                       %
                     </p>
                   </div>
                 </div>
 
-                {/* Verification Progress Bar */}
-                {selectedDoc.linesExtracted > 0 && (
+                {(selectedDoc.lines_extracted ?? 0) > 0 && (
                   <div className="space-y-2">
                     <h3 className="font-semibold">Verification Progress</h3>
                     <div className="space-y-2">
                       <Progress
-                        value={Math.round(
-                          (selectedDoc.linesVerified /
-                            selectedDoc.linesExtracted) *
-                            100
+                        value={getVerificationProgress(
+                          selectedDoc.lines_verified,
+                          selectedDoc.lines_extracted
                         )}
                         className="h-2"
                       />
                       <p className="text-sm text-muted-foreground">
-                        {selectedDoc.linesVerified.toLocaleString()} of{" "}
-                        {selectedDoc.linesExtracted.toLocaleString()} lines
-                        verified
+                        {(selectedDoc.lines_verified ?? 0).toLocaleString()} of{" "}
+                        {(selectedDoc.lines_extracted ?? 0).toLocaleString()}{" "}
+                        lines verified
                       </p>
                     </div>
                   </div>
@@ -353,9 +420,7 @@ export default function DocumentsPage() {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Uploaded</span>
-                      <span>
-                        {new Date(selectedDoc.uploadedAt).toLocaleString()}
-                      </span>
+                      <span>{formatDate(selectedDoc.created_at)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Document ID</span>
