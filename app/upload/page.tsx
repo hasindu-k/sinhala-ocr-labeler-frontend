@@ -16,12 +16,14 @@ import { Upload, FileText, CheckCircle2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { uploadDocument } from "@/lib/documents-api";
 import { showToast } from "@/lib/toast";
+import { useRouter } from "next/navigation";
 
 export default function UploadPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+  const router = useRouter();
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -79,6 +81,9 @@ export default function UploadPage() {
         }
       }
     } finally {
+      setTimeout(() => {
+        router.push("/documents");
+      }, 1000);
       setIsUploading(false);
     }
   };
