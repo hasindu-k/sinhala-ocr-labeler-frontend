@@ -121,3 +121,36 @@ export async function verifyLine(lineImageId: string) {
     method: "PUT",
   });
 }
+
+export async function listFinalizedDatasets() {
+  return apiFetch<
+    Array<{
+      name: string;
+      documents: number;
+      totalLines: number;
+      verifiedLines: number;
+      createdAt: string;
+      size: string;
+    }>
+  >(`${API_BASE_URL}/documents/finalized-datasets`, {
+    method: "GET",
+  });
+}
+
+export async function downloadFinalizedDataset(datasetName: string) {
+  const { getAccessToken } = await import("@/lib/localStore");
+  const token = getAccessToken();
+  const response = await fetch(
+    `${API_BASE_URL}/documents/finalized-datasets/${datasetName}/download`,
+    {
+      method: "GET",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to download dataset");
+  }
+
+  return response.blob();
+}
