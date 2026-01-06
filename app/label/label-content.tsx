@@ -27,7 +27,8 @@ import {
   AlertCircle,
   FileText,
   Keyboard,
-  Languages, // Added icon for language selection
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import {
   Select,
@@ -62,9 +63,7 @@ export function LabelContent() {
   const [isLoadingLines, setIsLoadingLines] = useState(false);
   const [isExtractingText, setIsExtractingText] = useState(false);
   const [isExtractingLineText, setIsExtractingLineText] = useState(false);
-
-  // State for Transliteration Language
-  const [lang, setLang] = useState("hi");
+  const [showAutoText, setShowAutoText] = useState(false);
 
   const initializedFromUrl = useRef(false);
 
@@ -325,8 +324,6 @@ export function LabelContent() {
       );
     }
 
-    const isVerified = currentLine?.verified;
-
     return (
       <>
         <div className="space-y-2">
@@ -340,45 +337,67 @@ export function LabelContent() {
           </div>
         </div>
 
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium">Auto-detected Text</p>
+        {showAutoText && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium">Auto-detected Text</p>
+            </div>
+            <div className="rounded-lg border bg-secondary/50 p-4">
+              <p className="text-sm font-mono leading-relaxed">
+                {currentLine.auto_text || (
+                  <span className="text-muted-foreground italic">
+                    No text detected
+                  </span>
+                )}
+              </p>
+            </div>
           </div>
-          <div className="rounded-lg border bg-secondary/50 p-4">
-            <p className="text-sm font-mono leading-relaxed">
-              {currentLine.auto_text || (
-                <span className="text-muted-foreground italic">
-                  No text detected
-                </span>
-              )}
-            </p>
-          </div>
-        </div>
+        )}
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <label htmlFor="corrected-text" className="text-sm font-medium">
               Corrected Text
             </label>
-            <Button
-              onClick={handleExtractLineText}
-              variant="ghost"
-              size="sm"
-              disabled={!currentLine || isExtractingLineText}
-              className="gap-2 h-8"
-            >
-              {isExtractingLineText ? (
-                <>
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                  Extracting...
-                </>
-              ) : (
-                <>
-                  <FileText className="h-4 w-4" />
-                  Extract Text
-                </>
-              )}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => setShowAutoText((prev) => !prev)}
+                variant="ghost"
+                size="sm"
+                className="gap-2 h-8"
+              >
+                {showAutoText ? (
+                  <>
+                    <EyeOff className="h-4 w-4" />
+                    Hide Auto Text
+                  </>
+                ) : (
+                  <>
+                    <Eye className="h-4 w-4" />
+                    Show Auto Text
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={handleExtractLineText}
+                variant="ghost"
+                size="sm"
+                disabled={!currentLine || isExtractingLineText}
+                className="gap-2 h-8"
+              >
+                {isExtractingLineText ? (
+                  <>
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    Extracting...
+                  </>
+                ) : (
+                  <>
+                    <FileText className="h-4 w-4" />
+                    Extract Text
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
 
           <ReactTransliterate
@@ -396,10 +415,6 @@ export function LabelContent() {
             // Add custom styles for the suggestion dropdown if needed
             containerStyles={{ position: "relative" }}
           />
-          <p className="text-xs text-muted-foreground">
-            Type in English to transliterate to{" "}
-            {lang === "en" ? "English" : "the selected language"}.
-          </p>
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row">
