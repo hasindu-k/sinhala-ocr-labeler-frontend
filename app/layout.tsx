@@ -11,26 +11,37 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "DocLabel - Document Annotation Platform",
+  title:
+    "Sinhala OCR Dataset Builder | Upload, Label & Verify Text — SinhalaLearn OCR",
   description:
-    "Professional document labeling and verification system for OCR training data",
-  generator: "v0.app",
-  icons: {
-    icon: [
-      {
-        url: "/icon-light-32x32.png",
-        media: "(prefers-color-scheme: light)",
-      },
-      {
-        url: "/icon-dark-32x32.png",
-        media: "(prefers-color-scheme: dark)",
-      },
-      {
-        url: "/icon.svg",
-        type: "image/svg+xml",
-      },
-    ],
-    apple: "/apple-icon.png",
+    "A Sinhala handwriting OCR platform to upload PDFs, extract line images, correct text, verify annotations, and export training datasets. Built for dataset creation, research, and Sinhala AI development.",
+  keywords: [
+    "Sinhala OCR",
+    "OCR Dataset",
+    "Sinhala handwriting recognition",
+    "OCR labeling tool",
+    "Sinhala AI",
+    "dataset builder",
+    "text recognition Sinhala",
+    "PDF OCR Sinhala",
+    "SinhalaLearn",
+  ],
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://ocr.sinhalalearn.online",
+    siteName: "sinhalalearn.online",
+    title:
+      "Sinhala OCR Dataset Builder | Upload, Label & Verify Text — SinhalaLearn OCR",
+    description:
+      "A Sinhala handwriting OCR platform to upload PDFs, extract line images, correct text, verify annotations, and export training datasets. Built for dataset creation, research, and Sinhala AI development.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title:
+      "Sinhala OCR Dataset Builder | Upload, Label & Verify Text — SinhalaLearn OCR",
+    description:
+      "A Sinhala handwriting OCR platform to upload PDFs, extract line images, correct text, verify annotations, and export training datasets. Built for dataset creation, research, and Sinhala AI development.",
   },
 };
 
