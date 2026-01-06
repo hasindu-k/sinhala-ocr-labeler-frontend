@@ -3,6 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { NavHeader } from "@/components/nav-header";
+import { ReactTransliterate } from "react-transliterate";
+import "react-transliterate/dist/index.css";
+
 import {
   Card,
   CardContent,
@@ -23,6 +26,7 @@ import {
   AlertCircle,
   FileText,
   Keyboard,
+  Languages, // Added icon for language selection
 } from "lucide-react";
 import {
   Select,
@@ -56,6 +60,10 @@ export function LabelContent() {
   const [isLoadingLines, setIsLoadingLines] = useState(false);
   const [isExtractingText, setIsExtractingText] = useState(false);
   const [isExtractingLineText, setIsExtractingLineText] = useState(false);
+
+  // State for Transliteration Language
+  const [lang, setLang] = useState("hi");
+
   const initializedFromUrl = useRef(false);
 
   const currentLine = lines[currentLineIndex];
@@ -98,7 +106,6 @@ export function LabelContent() {
     load();
   }, [searchParams]);
 
-  // Load lines for selected document
   useEffect(() => {
     const loadLines = async () => {
       if (!selectedDocument) return;
@@ -129,7 +136,6 @@ export function LabelContent() {
     loadLines();
   }, [searchParams, selectedDocument]);
 
-  // Keep URL query in sync with current document and line for reload/deep-link
   useEffect(() => {
     if (!selectedDocument) return;
     const docParam = searchParams.get("doc") || "";
@@ -152,7 +158,6 @@ export function LabelContent() {
     }
   }, [currentLineIndex, router, searchParams, selectedDocument]);
 
-  // Sync corrected text when current line changes
   useEffect(() => {
     if (!currentLine) {
       setCorrectedText("");
@@ -235,7 +240,6 @@ export function LabelContent() {
     try {
       await extractTextForDocument(selectedDocument);
       showToast({ message: "Text extraction started", variant: "success" });
-      // Refresh lines to get updated auto_text
       const refreshed = await listDocumentLines(selectedDocument);
       setLines(refreshed);
       setCurrentLineIndex(0);
@@ -255,7 +259,6 @@ export function LabelContent() {
     setIsExtractingLineText(true);
     try {
       const result = await extractTextFromLine(currentLine.id);
-      // Update the current line with extracted text
       const updatedLines = [...lines];
       updatedLines[currentLineIndex] = {
         ...updatedLines[currentLineIndex],
@@ -370,16 +373,52 @@ export function LabelContent() {
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="corrected-text" className="text-sm font-medium">
-            Corrected Text
-          </label>
-          <Textarea
-            id="corrected-text"
+          <div className="flex items-center justify-between">
+            <label htmlFor="corrected-text" className="text-sm font-medium">
+              Corrected Text (Transliteration)
+            </label>
+
+            {/* Language Selector for Transliteration */}
+            <Select value={lang} onValueChange={setLang}>
+              <SelectTrigger className="w-[180px] h-8">
+                <Languages className="mr-2 h-4 w-4" />
+                <SelectValue placeholder="Language" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="hi">Hindi (हिंदी)</SelectItem>
+                <SelectItem value="bn">Bengali (বাংলা)</SelectItem>
+                <SelectItem value="gu">Gujarati (ગુજરાતી)</SelectItem>
+                <SelectItem value="kn">Kannada (ಕನ್ನಡ)</SelectItem>
+                <SelectItem value="ml">Malayalam (മലയാളം)</SelectItem>
+                <SelectItem value="mr">Marathi (मराठी)</SelectItem>
+                <SelectItem value="ta">Tamil (தமிழ்)</SelectItem>
+                <SelectItem value="te">Telugu (తెలుగు)</SelectItem>
+                <SelectItem value="ur">Urdu (اردو)</SelectItem>
+                <SelectItem value="en">English (No Translit)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Replaced Textarea with ReactTransliterate */}
+          <ReactTransliterate
+            renderComponent={(props) => (
+              <Textarea
+                {...props}
+                id="corrected-text"
+                placeholder="Enter or correct the text from the image..."
+                className="min-h-24 font-mono text-sm"
+              />
+            )}
             value={correctedText}
-            onChange={(e) => setCorrectedText(e.target.value)}
-            placeholder="Enter or correct the text from the image..."
-            className="min-h-24 font-mono text-sm"
+            onChangeText={(text) => setCorrectedText(text)}
+            lang="si"
+            // Add custom styles for the suggestion dropdown if needed
+            containerStyles={{ position: "relative" }}
           />
+          <p className="text-xs text-muted-foreground">
+            Type in English to transliterate to{" "}
+            {lang === "en" ? "English" : "the selected language"}.
+          </p>
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row">
@@ -460,6 +499,8 @@ export function LabelContent() {
               Keyboard Shortcuts
             </Button>
           </div>
+
+          {/* ... [Rest of your UI: Keyboard Shortcuts, Document Selection, etc.] ... */}
 
           {showKeyboardShortcuts && (
             <Alert>
