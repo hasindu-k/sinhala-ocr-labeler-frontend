@@ -11,6 +11,7 @@ import { formatDate, getVerificationProgress } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { getStatusBadge } from "./getStatusBadge";
+import Link from "next/link";
 
 interface DocumentListProps {
   isLoading: boolean;
@@ -61,15 +62,25 @@ export default function DocumentList({
         >
           <div className="flex items-start justify-between gap-3 sm:gap-4">
             <div className="flex items-start gap-3 flex-1 min-w-0">
-              <div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg border bg-card">
+              <a
+                href={doc.stored_path}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg border bg-card hover:bg-accent cursor-pointer transition-colors"
+                title="Open PDF"
+              >
                 <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-              </div>
-
+              </a>
               <div className="flex-1 min-w-0 space-y-2">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="font-semibold truncate text-sm sm:text-base">
+                  <a
+                    href={doc.stored_path}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold truncate text-sm sm:text-base hover:text-primary hover:underline cursor-pointer"
+                  >
                     {doc.original_filename || "Untitled"}
-                  </h3>
+                  </a>
                   {getStatusBadge(doc.status)}
                 </div>
 
@@ -168,10 +179,12 @@ export default function DocumentList({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => onSelectDocument(doc)}>
-                    <Eye className="mr-2 h-4 w-4" />
-                    View Details
-                  </DropdownMenuItem>
+                  <Link href={`/label?doc=${doc.id}`}>
+                    <DropdownMenuItem>
+                      <Eye className="mr-2 h-4 w-4" />
+                      View & Label
+                    </DropdownMenuItem>
+                  </Link>
 
                   {/* MOBILE ONLY: Dropdown Item */}
                   <DropdownMenuItem
