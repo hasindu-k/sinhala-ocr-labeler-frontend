@@ -280,6 +280,28 @@ export function LabelContent() {
     }
   };
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey)) return;
+
+      const key = event.key.toLowerCase();
+
+      if (key === "s") {
+        event.preventDefault();
+        handleSave();
+        return;
+      }
+
+      if (event.key === "Enter" && user?.role === "admin") {
+        event.preventDefault();
+        handleVerify();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleSave, handleVerify, user?.role]);
+
   const renderProgressContent = () => {
     if (isLoadingLines) {
       return (
