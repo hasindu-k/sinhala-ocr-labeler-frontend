@@ -35,6 +35,14 @@ export const metadata: Metadata = {
       "Sinhala OCR Dataset Builder | Upload, Label & Verify Text — SinhalaLearn OCR",
     description:
       "A Sinhala handwriting OCR platform to upload PDFs, extract line images, correct text, verify annotations, and export training datasets. Built for dataset creation, research, and Sinhala AI development.",
+    images: [
+      {
+        url: "https://ocr.sinhalalearn.online/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Sinhala OCR Dataset Builder",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
@@ -42,6 +50,7 @@ export const metadata: Metadata = {
       "Sinhala OCR Dataset Builder | Upload, Label & Verify Text — SinhalaLearn OCR",
     description:
       "A Sinhala handwriting OCR platform to upload PDFs, extract line images, correct text, verify annotations, and export training datasets. Built for dataset creation, research, and Sinhala AI development.",
+    images: ["https://ocr.sinhalalearn.online/og-image.png"],
   },
 };
 
