@@ -496,28 +496,26 @@ export function LabelContent() {
             </Button>
           </div>
 
-          {/* ... [Rest of your UI: Keyboard Shortcuts, Document Selection, etc.] ... */}
-
           {showKeyboardShortcuts && (
             <Alert>
               <Keyboard className="h-4 w-4" />
               <AlertDescription>
-                <div className="grid gap-2 text-sm mt-2">
-                  <div className="flex justify-between">
-                    <span className="font-mono">Ctrl + S</span>
-                    <span>Save correction</span>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between gap-10">
+                    <span className="text-sm text-muted-foreground">
+                      Save correction
+                    </span>
+                    <code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-xs font-semibold">
+                      Ctrl + S
+                    </code>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="font-mono">Ctrl + Enter</span>
-                    <span>Verify line</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="font-mono">Ctrl + →</span>
-                    <span>Next line</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="font-mono">Ctrl + ←</span>
-                    <span>Previous line</span>
+                  <div className="flex items-center justify-between gap-10">
+                    <span className="text-sm text-muted-foreground">
+                      Verify line
+                    </span>
+                    <code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-xs font-semibold">
+                      Ctrl + Enter
+                    </code>
                   </div>
                 </div>
               </AlertDescription>
