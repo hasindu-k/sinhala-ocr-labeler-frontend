@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { NavHeader } from "@/components/nav-header";
 import { ReactTransliterate } from "react-transliterate";
 import "react-transliterate/dist/index.css";
+import { useAuth } from "@/lib/auth-context";
 
 import {
   Card,
@@ -50,6 +51,7 @@ import { DocumentResponse, LineResponse } from "@/types/documents";
 export function LabelContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user } = useAuth();
   const [currentLineIndex, setCurrentLineIndex] = useState(0);
   const [lines, setLines] = useState<LineResponse[]>([]);
   const [correctedText, setCorrectedText] = useState("");
@@ -194,7 +196,7 @@ export function LabelContent() {
     if (!currentLine) return;
     setIsExtractingText(true);
     try {
-      await verifyLine(currentLine.id);
+      await verifyLine(currentLine.id, correctedText);
       const updatedLines = [...lines];
       updatedLines[currentLineIndex] = {
         ...updatedLines[currentLineIndex],
@@ -341,6 +343,23 @@ export function LabelContent() {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium">Auto-detected Text</p>
+          </div>
+          <div className="rounded-lg border bg-secondary/50 p-4">
+            <p className="text-sm font-mono leading-relaxed">
+              {currentLine.auto_text || (
+                <span className="text-muted-foreground italic">
+                  No text detected
+                </span>
+              )}
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label htmlFor="corrected-text" className="text-sm font-medium">
+              Corrected Text
+            </label>
             <Button
               onClick={handleExtractLineText}
               variant="ghost"
@@ -361,45 +380,7 @@ export function LabelContent() {
               )}
             </Button>
           </div>
-          <div className="rounded-lg border bg-secondary/50 p-4">
-            <p className="text-sm font-mono leading-relaxed">
-              {currentLine.auto_text || (
-                <span className="text-muted-foreground italic">
-                  No text detected
-                </span>
-              )}
-            </p>
-          </div>
-        </div>
 
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label htmlFor="corrected-text" className="text-sm font-medium">
-              Corrected Text (Transliteration)
-            </label>
-
-            {/* Language Selector for Transliteration */}
-            <Select value={lang} onValueChange={setLang}>
-              <SelectTrigger className="w-[180px] h-8">
-                <Languages className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Language" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="hi">Hindi (हिंदी)</SelectItem>
-                <SelectItem value="bn">Bengali (বাংলা)</SelectItem>
-                <SelectItem value="gu">Gujarati (ગુજરાતી)</SelectItem>
-                <SelectItem value="kn">Kannada (ಕನ್ನಡ)</SelectItem>
-                <SelectItem value="ml">Malayalam (മലയാളം)</SelectItem>
-                <SelectItem value="mr">Marathi (मराठी)</SelectItem>
-                <SelectItem value="ta">Tamil (தமிழ்)</SelectItem>
-                <SelectItem value="te">Telugu (తెలుగు)</SelectItem>
-                <SelectItem value="ur">Urdu (اردو)</SelectItem>
-                <SelectItem value="en">English (No Translit)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Replaced Textarea with ReactTransliterate */}
           <ReactTransliterate
             renderComponent={(props) => (
               <Textarea
@@ -422,55 +403,55 @@ export function LabelContent() {
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row">
-          <Button
-            onClick={handleSave}
-            variant="outline"
-            className="gap-2 flex-1 bg-transparent"
-            disabled={!currentLine || isExtractingText}
-          >
-            {isExtractingText ? (
-              <>
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4" />
-                Save Correction
-              </>
-            )}
-          </Button>
-          <Button
-            onClick={handleVerify}
-            className="gap-2 flex-1"
-            disabled={!currentLine || isExtractingText || isVerified}
-          >
-            {isExtractingText ? (
-              <>
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                Verifying...
-              </>
-            ) : isVerified ? (
-              <>
-                <CheckCircle2 className="h-4 w-4" />
-                Verified
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="h-4 w-4" />
-                Verify & Next
-              </>
-            )}
-          </Button>
-          <Button
-            onClick={handleSkip}
-            variant="outline"
-            className="gap-2 bg-transparent"
-            disabled={!currentLine}
-          >
-            <SkipForward className="h-4 w-4" />
-            Skip
-          </Button>
+          {user?.role === "admin" ? (
+            <Button
+              onClick={handleVerify}
+              className="gap-2 flex-1"
+              disabled={!currentLine || isExtractingText}
+            >
+              {isExtractingText ? (
+                <>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Verifying...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-4 w-4" />
+                  Verify Line
+                </>
+              )}
+            </Button>
+          ) : (
+            <>
+              <Button
+                onClick={handleSave}
+                variant="outline"
+                className="gap-2 flex-1 bg-transparent"
+                disabled={!currentLine || isExtractingText}
+              >
+                {isExtractingText ? (
+                  <>
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4" />
+                    Save Correction
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={handleSkip}
+                variant="outline"
+                className="gap-2 bg-transparent"
+                disabled={!currentLine}
+              >
+                <SkipForward className="h-4 w-4" />
+                Skip
+              </Button>
+            </>
+          )}
         </div>
       </>
     );
