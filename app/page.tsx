@@ -106,8 +106,10 @@ export default function HomePage() {
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader>
-                <Upload className="h-8 w-8 text-primary mb-2" />
-                <CardTitle>Upload PDFs</CardTitle>
+                <div className="flex items-center gap-3">
+                  <Upload className="h-8 w-8 text-primary mb-2" />
+                  <CardTitle>Upload PDFs</CardTitle>
+                </div>
                 <CardDescription>
                   Drag and drop PDF documents for automatic processing
                 </CardDescription>
@@ -116,8 +118,10 @@ export default function HomePage() {
 
             <Card>
               <CardHeader>
-                <FileText className="h-8 w-8 text-primary mb-2" />
-                <CardTitle>Extract Lines</CardTitle>
+                <div className="flex items-center gap-3">
+                  <FileText className="h-8 w-8 text-primary mb-2" />
+                  <CardTitle>Extract Lines</CardTitle>
+                </div>
                 <CardDescription>
                   Automatic line detection and text extraction from pages
                 </CardDescription>
@@ -126,8 +130,10 @@ export default function HomePage() {
 
             <Card>
               <CardHeader>
-                <CheckCircle2 className="h-8 w-8 text-primary mb-2" />
-                <CardTitle>Verify & Correct</CardTitle>
+                <div className="flex items-center gap-3">
+                  <CheckCircle2 className="h-8 w-8 text-primary mb-2" />
+                  <CardTitle>Verify & Correct</CardTitle>
+                </div>
                 <CardDescription>
                   Human-in-the-loop verification with annotation tracking
                 </CardDescription>
@@ -136,8 +142,10 @@ export default function HomePage() {
 
             <Card>
               <CardHeader>
-                <Database className="h-8 w-8 text-primary mb-2" />
-                <CardTitle>Export Datasets</CardTitle>
+                <div className="flex items-center gap-3">
+                  <Database className="h-8 w-8 text-primary mb-2" />
+                  <CardTitle>Export Datasets</CardTitle>
+                </div>
                 <CardDescription>
                   Download verified training data in standard formats
                 </CardDescription>
@@ -156,37 +164,45 @@ export default function HomePage() {
             <CardContent>
               <div className="grid gap-6 md:grid-cols-4">
                 <div className="space-y-2">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
-                    1
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
+                      1
+                    </div>
+                    <h3 className="font-semibold">Upload</h3>
                   </div>
-                  <h3 className="font-semibold">Upload</h3>
                   <p className="text-sm text-muted-foreground">
                     Upload PDF documents to start the processing pipeline
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
-                    2
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
+                      2
+                    </div>
+                    <h3 className="font-semibold">Process</h3>
                   </div>
-                  <h3 className="font-semibold">Process</h3>
                   <p className="text-sm text-muted-foreground">
                     Automatic conversion to images and line extraction
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
-                    3
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
+                      3
+                    </div>
+                    <h3 className="font-semibold">Label</h3>
                   </div>
-                  <h3 className="font-semibold">Label</h3>
                   <p className="text-sm text-muted-foreground">
                     Annotate and correct extracted text line by line
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
-                    4
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
+                      4
+                    </div>
+                    <h3 className="font-semibold">Export</h3>
                   </div>
-                  <h3 className="font-semibold">Export</h3>
                   <p className="text-sm text-muted-foreground">
                     Download verified datasets for model training
                   </p>
