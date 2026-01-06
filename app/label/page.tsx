@@ -546,7 +546,9 @@ export default function LabelPage() {
                   <div className="flex items-center gap-2">
                     <CardTitle>
                       {currentLine
-                        ? `Line ${currentLineIndex + 1} of ${lines.length}`
+                        ? `Line ${currentLineIndex + 1} of ${
+                            lines.length
+                          } • Page ${currentLine.page_number}`
                         : "No line selected"}
                     </CardTitle>
                     {currentLine &&

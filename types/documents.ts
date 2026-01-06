@@ -24,4 +24,5 @@ export interface LineResponse {
   corrected_text: string | null;
   verified: boolean;
   reviewer_id: string | null;
+  page_number: number;
 }
