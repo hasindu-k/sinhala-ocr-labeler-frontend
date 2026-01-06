@@ -29,6 +29,7 @@ import {
   Keyboard,
   Eye,
   EyeOff,
+  ListTodo,
 } from "lucide-react";
 import {
   Select,
@@ -45,6 +46,7 @@ import {
   extractTextFromLine,
   saveCorrectedText,
   verifyLine,
+  createFinalizedDataset,
 } from "@/lib/documents-api";
 import { showToast } from "@/lib/toast";
 import { DocumentResponse, LineResponse } from "@/types/documents";
@@ -63,6 +65,7 @@ export function LabelContent() {
   const [isLoadingLines, setIsLoadingLines] = useState(false);
   const [isExtractingText, setIsExtractingText] = useState(false);
   const [isExtractingLineText, setIsExtractingLineText] = useState(false);
+  const [isCreatingDataset, setIsCreatingDataset] = useState(false);
   const [showAutoText, setShowAutoText] = useState(false);
 
   const initializedFromUrl = useRef(false);
@@ -73,6 +76,30 @@ export function LabelContent() {
     () => documents.find((d) => d.id === selectedDocument) || null,
     [documents, selectedDocument]
   );
+
+  const allLinesVerified = useMemo(
+    () => lines.length > 0 && lines.every((line) => line.verified),
+    [lines]
+  );
+
+  const jumpToNextUnverified = () => {
+    if (lines.length === 0) return;
+
+    // 1. Search forward from current line
+    let nextIndex = lines.findIndex(
+      (l, index) => index > currentLineIndex && !l.verified
+    );
+
+    if (nextIndex === -1) {
+      nextIndex = lines.findIndex((l) => !l.verified);
+    }
+
+    if (nextIndex !== -1) {
+      setCurrentLineIndex(nextIndex);
+    } else {
+      showToast({ message: "All lines are verified! 🎉", variant: "success" });
+    }
+  };
 
   const progress = useMemo(() => {
     if (lines.length === 0) return 0;
@@ -280,6 +307,27 @@ export function LabelContent() {
     }
   };
 
+  const handleCreateFinalizedDataset = async () => {
+    if (!selectedDocument || !allLinesVerified) return;
+    setIsCreatingDataset(true);
+    try {
+      const result = await createFinalizedDataset(selectedDocument);
+      const datasetName = result?.dataset_name || "dataset";
+      showToast({
+        message: `✅ Finalized dataset created: ${datasetName}`,
+        variant: "success",
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to create finalized dataset";
+      showToast({ message, variant: "error" });
+    } finally {
+      setIsCreatingDataset(false);
+    }
+  };
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!(event.ctrlKey || event.metaKey)) return;
@@ -328,6 +376,27 @@ export function LabelContent() {
           </span>
         </div>
         <Progress value={progress} className="h-2" />
+        {allLinesVerified && (
+          <div className="pt-2">
+            <Button
+              onClick={handleCreateFinalizedDataset}
+              disabled={isCreatingDataset}
+              className="w-full sm:w-auto gap-2"
+            >
+              {isCreatingDataset ? (
+                <>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Creating dataset...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-4 w-4" />
+                  Create Finalized Dataset
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </div>
     );
   };
@@ -549,7 +618,20 @@ export function LabelContent() {
             <CardHeader>
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div className="space-y-1">
-                  <CardTitle>Select Document</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <CardTitle>Select Document</CardTitle>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 gap-1 px-2 text-xs text-muted-foreground hover:text-primary"
+                      onClick={jumpToNextUnverified}
+                      disabled={lines.length === 0}
+                      title="Jump to next unverified line"
+                    >
+                      <ListTodo className="h-3.5 w-3.5" />
+                      Next Unverified
+                    </Button>
+                  </div>
                   <CardDescription>
                     Choose a document to start labeling
                   </CardDescription>

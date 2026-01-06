@@ -155,3 +155,12 @@ export async function downloadFinalizedDataset(datasetName: string) {
 
   return response.blob();
 }
+
+export async function createFinalizedDataset(documentId: string) {
+  return apiFetch<{ status: string; dataset_name: string }>(
+    `${API_BASE_URL}/documents/${documentId}/create-finalized`,
+    {
+      method: "POST",
+    }
+  );
+}
