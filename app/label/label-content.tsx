@@ -81,6 +81,11 @@ export function LabelContent() {
           const docFromQuery = searchParams.get("doc");
           const matchedDoc = data.find((d) => d.id === docFromQuery);
           setSelectedDocument((prev) => prev || matchedDoc?.id || data[0].id);
+          if (!docFromQuery) {
+            const params = new URLSearchParams(searchParams.toString());
+            params.set("doc", matchedDoc?.id || data[0].id);
+            router.replace(`?${params.toString()}`, { scroll: false });
+          }
         }
       } catch (error) {
         const message =
@@ -126,7 +131,7 @@ export function LabelContent() {
 
   // Keep URL query in sync with current document and line for reload/deep-link
   useEffect(() => {
-    if (!selectedDocument || !initializedFromUrl.current) return;
+    if (!selectedDocument) return;
     const docParam = searchParams.get("doc") || "";
     const lineParam = searchParams.get("line") || "";
     const nextLine = String(currentLineIndex);
@@ -137,7 +142,7 @@ export function LabelContent() {
       params.set("doc", selectedDocument);
       changed = true;
     }
-    if (lineParam !== nextLine) {
+    if (initializedFromUrl.current && lineParam !== nextLine) {
       params.set("line", nextLine);
       changed = true;
     }
