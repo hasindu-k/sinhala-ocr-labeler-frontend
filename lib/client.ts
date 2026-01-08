@@ -16,6 +16,12 @@ function dispatchLogoutEvent() {
   }
 }
 
+function dispatchTokenRefreshedEvent() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("auth:token-refreshed"));
+  }
+}
+
 async function refreshAccessToken(): Promise<void> {
   const authTokens = getAuthTokens();
 
@@ -39,6 +45,7 @@ async function refreshAccessToken(): Promise<void> {
 
   const newTokens = await response.json();
   setAuthTokens(newTokens);
+  dispatchTokenRefreshedEvent();
 }
 
 async function ensureAccessTokenRefreshed(): Promise<void> {

@@ -52,15 +52,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check if user is logged in on mount
   useEffect(() => {
-    const storedUser = getStoredUser<User>();
-    const tokens = getAuthTokens();
+    const checkAuth = () => {
+      const storedUser = getStoredUser<User>();
+      const tokens = getAuthTokens();
 
-    if (storedUser && tokens && !isAccessTokenExpired()) {
-      setUser(storedUser);
-    } else if (!tokens) {
-      clearStoredUser();
-    }
+      // Consider user logged in if we have tokens and stored user,
+      // even if the access token is currently expired (refresh will run client-side)
+      if (storedUser && tokens) {
+        setUser(storedUser);
+      } else if (!tokens) {
+        clearStoredUser();
+        setUser(null);
+      }
+    };
+
+    checkAuth();
+
+    // Listen for logout events (e.g., when token refresh fails)
+    const handleLogout = () => {
+      setUser(null);
+    };
+    window.addEventListener("auth:logout", handleLogout);
+
+    // Listen for successful token refresh to re-check auth state
+    const handleTokenRefreshed = () => {
+      checkAuth();
+    };
+    window.addEventListener("auth:token-refreshed", handleTokenRefreshed);
+
     setIsLoading(false);
+
+    return () => {
+      window.removeEventListener("auth:logout", handleLogout);
+      window.removeEventListener("auth:token-refreshed", handleTokenRefreshed);
+    };
+  }, []);
+
+  // Re-check auth when token is refreshed (listen to storage changes)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const storedUser = getStoredUser<User>();
+      const tokens = getAuthTokens();
+
+      if (storedUser && tokens && !isAccessTokenExpired()) {
+        setUser(storedUser);
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+    };
   }, []);
 
   // Redirect logic
