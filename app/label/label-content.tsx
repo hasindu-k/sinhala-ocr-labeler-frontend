@@ -32,6 +32,8 @@ import {
   ListTodo,
   Ban,
   RotateCcw,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import {
   Select,
@@ -72,10 +74,25 @@ export function LabelContent() {
   const [isCreatingDataset, setIsCreatingDataset] = useState(false);
   const [showAutoText, setShowAutoText] = useState(false);
   const [isUpdatingInvalidState, setIsUpdatingInvalidState] = useState(false);
+  const [imageZoom, setImageZoom] = useState(1);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const initializedFromUrl = useRef(false);
 
   const currentLine = lines[currentLineIndex];
+
+  useEffect(() => {
+    // Reset zoom when line changes
+    setImageZoom(1);
+
+    // Focus text area slightly after render to ensure content is ready if not verified
+    const timer = setTimeout(() => {
+      if (!currentLine?.verified && textareaRef.current) {
+        textareaRef.current.focus();
+      }
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [currentLineIndex]);
 
   const selectedDoc = useMemo(
     () => documents.find((d) => d.id === selectedDocument) || null,
@@ -490,63 +507,112 @@ export function LabelContent() {
 
     return (
       <>
-        <div className="space-y-2">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between pb-2">
+            {/* Left: Title & Status Badge */}
             <div className="flex items-center gap-2">
-              <p className="text-sm font-medium">Line Image</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                Line Image
+              </p>
               {currentLine.is_invalid && (
-                <Badge variant="destructive" className="gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  Invalid crop
-                </Badge>
+                <span className="flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
+                  <Ban className="h-3 w-3" /> Invalid
+                </span>
               )}
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            {/* Right: Toolbar Actions */}
+            <div className="flex items-center gap-3">
+              {/* 1. Zoom Control Group (Segmented Style) */}
+              <div className="flex items-center rounded-md border shadow-sm">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 rounded-none rounded-l-md border-r hover:bg-muted"
+                  onClick={() => setImageZoom((z) => Math.max(1, z - 0.5))}
+                  disabled={imageZoom <= 1}
+                  title="Zoom Out"
+                >
+                  <ZoomOut className="h-3.5 w-3.5" />
+                </Button>
+                <div className="w-12 bg-muted/20 text-center text-xs font-medium leading-7 tabular-nums">
+                  {imageZoom}x
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 rounded-none rounded-r-md border-l hover:bg-muted"
+                  onClick={() => setImageZoom((z) => Math.min(4, z + 0.5))}
+                  disabled={imageZoom >= 4}
+                  title="Zoom In"
+                >
+                  <ZoomIn className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+
+              <div className="h-4 w-px bg-border" />
+
+              {/* 2. Invalidate / Restore Action */}
               {currentLine.is_invalid ? (
                 <Button
                   variant="outline"
                   size="sm"
-                  className="gap-2"
+                  className="h-7 gap-1.5 border-dashed text-xs hover:bg-muted"
                   onClick={handleRestoreLine}
                   disabled={isUpdatingInvalidState}
                 >
                   {isUpdatingInvalidState ? (
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    <div className="h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                   ) : (
-                    <RotateCcw className="h-4 w-4" />
+                    <RotateCcw className="h-3.5 w-3.5" />
                   )}
-                  Restore Line
+                  Restore
                 </Button>
               ) : (
                 <Button
-                  variant="destructive"
+                  variant="ghost"
                   size="sm"
-                  className="gap-2"
+                  className="h-7 gap-1.5 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                   onClick={handleInvalidateLine}
                   disabled={isUpdatingInvalidState}
                 >
                   {isUpdatingInvalidState ? (
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
                   ) : (
-                    <Ban className="h-4 w-4" />
+                    <Ban className="h-3.5 w-3.5" />
                   )}
-                  Mark Invalid
+                  Invalidate
                 </Button>
               )}
             </div>
           </div>
-          <div className="rounded-lg border bg-muted/30 p-4 flex items-center justify-center">
-            <img
-              src={
-                currentLine.image_url ||
-                currentLine.image_path ||
-                "/placeholder.svg"
-              }
-              alt={`Line ${currentLineIndex + 1}`}
-              className="max-h-24 w-auto"
-            />
+
+          <div className="relative rounded-lg border bg-muted/30 h-48 flex items-center justify-center overflow-hidden">
+            <div
+              className="overflow-auto w-full h-full flex items-center justify-center"
+              style={{ cursor: imageZoom > 1 ? "grab" : "default" }}
+            >
+              <img
+                src={
+                  currentLine.image_url ||
+                  currentLine.image_path ||
+                  "/placeholder.svg"
+                }
+                alt="Line"
+                style={{
+                  transform: `scale(${imageZoom})`,
+                  transition: "transform 0.2s ease-out",
+                }}
+                className="max-h-full w-auto object-contain"
+              />
+            </div>
           </div>
+
+          {currentLine.is_invalid && (
+            <Badge variant="destructive" className="w-fit gap-1 mt-2">
+              <AlertCircle className="h-3 w-3" /> Invalid crop
+            </Badge>
+          )}
         </div>
 
         {currentLine.is_invalid && (
@@ -560,19 +626,9 @@ export function LabelContent() {
         )}
 
         {showAutoText && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">Auto-detected Text</p>
-            </div>
-            <div className="rounded-lg border bg-secondary/50 p-4">
-              <p className="text-sm font-mono leading-relaxed">
-                {currentLine.auto_text || (
-                  <span className="text-muted-foreground italic">
-                    No text detected
-                  </span>
-                )}
-              </p>
-            </div>
+          <div className="rounded-md border bg-secondary/30 p-3 text-xs font-mono text-muted-foreground">
+            <span className="font-bold mr-2">Auto:</span>
+            {currentLine?.auto_text || "No text detected"}
           </div>
         )}
 
@@ -621,23 +677,40 @@ export function LabelContent() {
               </Button>
             </div>
           </div>
+          <div className="flex-1 min-h-[120px]">
+            <ReactTransliterate
+              renderComponent={(props) => (
+                <Textarea
+                  {...props}
+                  // CORRECTED REF LOGIC BELOW
+                  id="corrected-text"
+                  placeholder="Enter or correct the text from the image..."
+                  ref={(element) => {
+                    // 1. Assign to your local ref (for auto-focus)
+                    textareaRef.current = element;
 
-          <ReactTransliterate
-            renderComponent={(props) => (
-              <Textarea
-                {...props}
-                id="corrected-text"
-                placeholder="Enter or correct the text from the image..."
-                className="min-h-24 font-mono text-sm"
-                disabled={!!currentLine.is_invalid}
-              />
-            )}
-            value={correctedText}
-            onChangeText={(text) => setCorrectedText(text)}
-            lang="si"
-            // Add custom styles for the suggestion dropdown if needed
-            containerStyles={{ position: "relative" }}
-          />
+                    // 2. Safely assign to the library's ref
+                    // The library might pass a callback OR an object ref
+                    if (props.ref) {
+                      if (typeof props.ref === "function") {
+                        props.ref(element);
+                      } else {
+                        // It's an object ref, so we assign to .current
+                        // @ts-ignore
+                        props.ref.current = element;
+                      }
+                    }
+                  }}
+                  className="h-full font-mono text-lg resize-none"
+                  disabled={!!currentLine?.is_invalid}
+                />
+              )}
+              value={correctedText}
+              onChangeText={(text) => setCorrectedText(text)}
+              lang="si"
+              containerStyles={{ height: "100%" }} // Ensure container takes full height
+            />
+          </div>
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row">
@@ -818,6 +891,35 @@ export function LabelContent() {
             {selectedDocument && (
               <CardContent>{renderProgressContent()}</CardContent>
             )}
+            <div className="flex items-center justify-between px-4">
+              <Button
+                onClick={goToPreviousLine}
+                disabled={currentLineIndex === 0 || lines.length === 0}
+                variant="outline"
+                className="gap-2 bg-transparent"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">Previous Line</span>
+              </Button>
+
+              <span className="text-sm text-muted-foreground whitespace-nowrap">
+                {lines.length === 0
+                  ? "0 of 0"
+                  : `${currentLineIndex + 1} of ${lines.length}`}
+              </span>
+
+              <Button
+                onClick={goToNextLine}
+                disabled={
+                  lines.length === 0 || currentLineIndex === lines.length - 1
+                }
+                variant="outline"
+                className="gap-2 bg-transparent"
+              >
+                <span className="hidden sm:inline">Next Line</span>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </Card>
 
           {/* Line Labeling Interface */}
@@ -855,41 +957,6 @@ export function LabelContent() {
             </CardHeader>
             <CardContent className="space-y-6">
               {renderLineContent()}
-            </CardContent>
-          </Card>
-
-          {/* Navigation */}
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <Button
-                  onClick={goToPreviousLine}
-                  disabled={currentLineIndex === 0 || lines.length === 0}
-                  variant="outline"
-                  className="gap-2 bg-transparent"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  <span className="hidden sm:inline">Previous Line</span>
-                </Button>
-
-                <span className="text-sm text-muted-foreground whitespace-nowrap">
-                  {lines.length === 0
-                    ? "0 of 0"
-                    : `${currentLineIndex + 1} of ${lines.length}`}
-                </span>
-
-                <Button
-                  onClick={goToNextLine}
-                  disabled={
-                    lines.length === 0 || currentLineIndex === lines.length - 1
-                  }
-                  variant="outline"
-                  className="gap-2 bg-transparent"
-                >
-                  <span className="hidden sm:inline">Next Line</span>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
             </CardContent>
           </Card>
         </div>
