@@ -34,6 +34,7 @@ import {
   RotateCcw,
   ZoomIn,
   ZoomOut,
+  CropIcon,
 } from "lucide-react";
 import {
   Select,
@@ -53,9 +54,11 @@ import {
   createFinalizedDataset,
   invalidateLine,
   restoreLine,
+  updateLineImage,
 } from "@/lib/documents-api";
 import { showToast } from "@/lib/toast";
 import { DocumentResponse, LineResponse } from "@/types/documents";
+import { CropModal } from "@/components/crop-modal";
 
 export function LabelContent() {
   const router = useRouter();
@@ -76,6 +79,7 @@ export function LabelContent() {
   const [isUpdatingInvalidState, setIsUpdatingInvalidState] = useState(false);
   const [imageZoom, setImageZoom] = useState(1);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
 
   const initializedFromUrl = useRef(false);
 
@@ -440,6 +444,31 @@ export function LabelContent() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleSave, handleVerify, user?.role]);
 
+  const handleCropSave = async (newImageBlob: Blob) => {
+    if (!currentLine) return;
+
+    // Create FormData to send file
+    const formData = new FormData();
+    formData.append("file", newImageBlob);
+    formData.append("image_path", currentLine.image_path || "cropped_line.png");
+    formData.append("page_id", currentLine.page_id);
+
+    // Call your backend API to overwrite the image
+    // This function needs to be created in your API layer
+    const updatedLine = await updateLineImage(currentLine.id, formData);
+
+    // Update local state to show new image immediately
+    const updatedLines = [...lines];
+    // Force a cache bust on the image URL so the browser reloads it
+    updatedLines[currentLineIndex] = {
+      ...updatedLines[currentLineIndex],
+      image_url: `${updatedLine.image_url}?t=${Date.now()}`,
+    };
+    setLines(updatedLines);
+
+    showToast({ message: "Crop updated!", variant: "success" });
+  };
+
   const renderProgressContent = () => {
     if (isLoadingLines) {
       return (
@@ -549,6 +578,17 @@ export function LabelContent() {
                   <ZoomIn className="h-3.5 w-3.5" />
                 </Button>
               </div>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground hover:text-primary"
+                onClick={() => setIsCropModalOpen(true)}
+                title="Adjust Crop"
+                disabled={!!currentLine.is_invalid}
+              >
+                <CropIcon className="h-3.5 w-3.5" />
+              </Button>
 
               <div className="h-4 w-px bg-border" />
 
@@ -961,6 +1001,15 @@ export function LabelContent() {
           </Card>
         </div>
       </main>
+
+      {currentLine && (
+        <CropModal
+          isOpen={isCropModalOpen}
+          onClose={() => setIsCropModalOpen(false)}
+          imageUrl={currentLine.image_path || ""}
+          onSave={handleCropSave}
+        />
+      )}
     </div>
   );
 }

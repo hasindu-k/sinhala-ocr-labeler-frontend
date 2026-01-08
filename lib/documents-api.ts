@@ -199,3 +199,10 @@ export async function createFinalizedDataset(documentId: string) {
     }
   );
 }
+
+export async function updateLineImage(lineId: string, formData: FormData) {
+  return apiFetch<LineResponse>(`${API_BASE_URL}/api/lines/${lineId}/images`, {
+    method: "POST",
+    body: formData,
+  });
+}
