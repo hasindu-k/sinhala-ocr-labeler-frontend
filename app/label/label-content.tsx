@@ -30,6 +30,8 @@ import {
   Eye,
   EyeOff,
   ListTodo,
+  Ban,
+  RotateCcw,
 } from "lucide-react";
 import {
   Select,
@@ -47,6 +49,8 @@ import {
   saveCorrectedText,
   verifyLine,
   createFinalizedDataset,
+  invalidateLine,
+  restoreLine,
 } from "@/lib/documents-api";
 import { showToast } from "@/lib/toast";
 import { DocumentResponse, LineResponse } from "@/types/documents";
@@ -67,6 +71,7 @@ export function LabelContent() {
   const [isExtractingLineText, setIsExtractingLineText] = useState(false);
   const [isCreatingDataset, setIsCreatingDataset] = useState(false);
   const [showAutoText, setShowAutoText] = useState(false);
+  const [isUpdatingInvalidState, setIsUpdatingInvalidState] = useState(false);
 
   const initializedFromUrl = useRef(false);
 
@@ -196,6 +201,13 @@ export function LabelContent() {
 
   const handleSave = async () => {
     if (!currentLine) return;
+    if (currentLine.is_invalid) {
+      showToast({
+        message: "Line is marked invalid. Restore before saving.",
+        variant: "error",
+      });
+      return;
+    }
     setIsExtractingText(true);
     try {
       await saveCorrectedText(currentLine.id, correctedText);
@@ -220,6 +232,13 @@ export function LabelContent() {
 
   const handleVerify = async () => {
     if (!currentLine) return;
+    if (currentLine.is_invalid) {
+      showToast({
+        message: "Line is marked invalid. Restore before verifying.",
+        variant: "error",
+      });
+      return;
+    }
     setIsExtractingText(true);
     try {
       await verifyLine(currentLine.id, correctedText);
@@ -284,6 +303,13 @@ export function LabelContent() {
 
   const handleExtractLineText = async () => {
     if (!currentLine) return;
+    if (currentLine.is_invalid) {
+      showToast({
+        message: "Line is marked invalid. Restore before extracting.",
+        variant: "error",
+      });
+      return;
+    }
     setIsExtractingLineText(true);
     try {
       const result = await extractTextFromLine(currentLine.id);
@@ -304,6 +330,53 @@ export function LabelContent() {
       showToast({ message, variant: "error" });
     } finally {
       setIsExtractingLineText(false);
+    }
+  };
+
+  const handleInvalidateLine = async () => {
+    if (!currentLine) return;
+    setIsUpdatingInvalidState(true);
+    try {
+      await invalidateLine(currentLine.id);
+      setLines((prev) => {
+        const updated = [...prev];
+        updated[currentLineIndex] = {
+          ...updated[currentLineIndex],
+          is_invalid: true,
+        } as LineResponse;
+        return updated;
+      });
+      showToast({ message: "Line marked invalid", variant: "success" });
+      goToNextLine();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to invalidate line";
+      showToast({ message, variant: "error" });
+    } finally {
+      setIsUpdatingInvalidState(false);
+    }
+  };
+
+  const handleRestoreLine = async () => {
+    if (!currentLine) return;
+    setIsUpdatingInvalidState(true);
+    try {
+      await restoreLine(currentLine.id);
+      setLines((prev) => {
+        const updated = [...prev];
+        updated[currentLineIndex] = {
+          ...updated[currentLineIndex],
+          is_invalid: false,
+        } as LineResponse;
+        return updated;
+      });
+      showToast({ message: "Line restored", variant: "success" });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to restore line";
+      showToast({ message, variant: "error" });
+    } finally {
+      setIsUpdatingInvalidState(false);
     }
   };
 
@@ -418,15 +491,73 @@ export function LabelContent() {
     return (
       <>
         <div className="space-y-2">
-          <p className="text-sm font-medium">Line Image</p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium">Line Image</p>
+              {currentLine.is_invalid && (
+                <Badge variant="destructive" className="gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  Invalid crop
+                </Badge>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {currentLine.is_invalid ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={handleRestoreLine}
+                  disabled={isUpdatingInvalidState}
+                >
+                  {isUpdatingInvalidState ? (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                  ) : (
+                    <RotateCcw className="h-4 w-4" />
+                  )}
+                  Restore Line
+                </Button>
+              ) : (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="gap-2"
+                  onClick={handleInvalidateLine}
+                  disabled={isUpdatingInvalidState}
+                >
+                  {isUpdatingInvalidState ? (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  ) : (
+                    <Ban className="h-4 w-4" />
+                  )}
+                  Mark Invalid
+                </Button>
+              )}
+            </div>
+          </div>
           <div className="rounded-lg border bg-muted/30 p-4 flex items-center justify-center">
             <img
-              src={currentLine.image_path || "/placeholder.svg"}
+              src={
+                currentLine.image_url ||
+                currentLine.image_path ||
+                "/placeholder.svg"
+              }
               alt={`Line ${currentLineIndex + 1}`}
               className="max-h-24 w-auto"
             />
           </div>
         </div>
+
+        {currentLine.is_invalid && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              This line is marked as an invalid crop. Restore it to continue
+              labeling or verify a different line.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {showAutoText && (
           <div className="space-y-2">
@@ -498,6 +629,7 @@ export function LabelContent() {
                 id="corrected-text"
                 placeholder="Enter or correct the text from the image..."
                 className="min-h-24 font-mono text-sm"
+                disabled={!!currentLine.is_invalid}
               />
             )}
             value={correctedText}
@@ -513,7 +645,9 @@ export function LabelContent() {
             <Button
               onClick={handleVerify}
               className="gap-2 flex-1"
-              disabled={!currentLine || isExtractingText}
+              disabled={
+                !currentLine || isExtractingText || !!currentLine?.is_invalid
+              }
             >
               {isExtractingText ? (
                 <>
@@ -533,7 +667,9 @@ export function LabelContent() {
                 onClick={handleSave}
                 variant="outline"
                 className="gap-2 flex-1 bg-transparent"
-                disabled={!currentLine || isExtractingText}
+                disabled={
+                  !currentLine || isExtractingText || !!currentLine?.is_invalid
+                }
               >
                 {isExtractingText ? (
                   <>

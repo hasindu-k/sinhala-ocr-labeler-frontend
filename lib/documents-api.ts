@@ -85,6 +85,41 @@ export async function listDocumentLines(
   );
 }
 
+export async function getLine(lineId: string) {
+  return apiFetch<LineResponse>(`${API_BASE_URL}/api/lines/${lineId}`, {
+    method: "GET",
+  });
+}
+
+export async function deleteLine(
+  lineId: string,
+  options: { hard?: boolean } = {}
+) {
+  const suffix = options.hard ? "?hard=true" : "";
+
+  return apiFetch<void>(`${API_BASE_URL}/api/lines/${lineId}${suffix}`, {
+    method: "DELETE",
+  });
+}
+
+export async function invalidateLine(lineId: string) {
+  return apiFetch<{ status: string; line_id: string; is_invalid: boolean }>(
+    `${API_BASE_URL}/api/lines/${lineId}/invalidate`,
+    {
+      method: "PUT",
+    }
+  );
+}
+
+export async function restoreLine(lineId: string) {
+  return apiFetch<{ status: string; line_id: string; is_invalid: boolean }>(
+    `${API_BASE_URL}/api/lines/${lineId}/restore`,
+    {
+      method: "PUT",
+    }
+  );
+}
+
 export async function extractTextFromLine(lineImageId: string) {
   return apiFetch<{
     status: string;

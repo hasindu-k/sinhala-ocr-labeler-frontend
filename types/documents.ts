@@ -20,9 +20,15 @@ export interface LineResponse {
   id: string;
   page_id: string;
   image_path: string;
+  image_url?: string;
+  gt_text_path?: string;
   auto_text: string | null;
   corrected_text: string | null;
+  gt_text_content?: string;
   verified: boolean;
+  is_invalid?: boolean;
   reviewer_id: string | null;
   page_number: number;
+  created_at?: string;
+  updated_at?: string;
 }
