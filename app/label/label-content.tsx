@@ -35,6 +35,7 @@ import {
   ZoomIn,
   ZoomOut,
   CropIcon,
+  Loader2,
 } from "lucide-react";
 import {
   Select,
@@ -59,6 +60,8 @@ import {
 import { showToast } from "@/lib/toast";
 import { DocumentResponse, LineResponse } from "@/types/documents";
 import { CropModal } from "@/components/crop-modal";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 export function LabelContent() {
   const router = useRouter();
@@ -80,6 +83,8 @@ export function LabelContent() {
   const [imageZoom, setImageZoom] = useState(1);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+  const [isTransliterationEnabled, setIsTransliterationEnabled] =
+    useState(true);
 
   const initializedFromUrl = useRef(false);
 
@@ -434,7 +439,7 @@ export function LabelContent() {
         return;
       }
 
-      if (event.key === "Enter" && user?.role === "admin") {
+      if (key === "enter" && user?.role === "admin") {
         event.preventDefault();
         handleVerify();
       }
@@ -673,83 +678,115 @@ export function LabelContent() {
         )}
 
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label htmlFor="corrected-text" className="text-sm font-medium">
-              Corrected Text
-            </label>
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-3 mb-4">
+            {/* Left Side: Label and Toggle */}
+            <div className="flex items-center gap-4">
+              <h2 className="text-sm font-semibold text-foreground">
+                Corrected Text
+              </h2>
+
+              <div className="flex items-center space-x-2 rounded-full border bg-muted/50 px-3 py-1 transition-colors hover:bg-muted">
+                <Switch
+                  id="transliteration-mode"
+                  checked={isTransliterationEnabled}
+                  onCheckedChange={setIsTransliterationEnabled}
+                  className="scale-75"
+                />
+                <Label
+                  htmlFor="transliteration-mode"
+                  className="text-[11px] font-medium uppercase tracking-wider cursor-pointer"
+                >
+                  Sinhala Suggestions
+                </Label>
+              </div>
+            </div>
+
+            {/* Right Side: Action Buttons */}
+            <div className="flex items-center gap-1">
               <Button
                 onClick={() => setShowAutoText((prev) => !prev)}
                 variant="ghost"
                 size="sm"
-                className="gap-2 h-8"
+                className="gap-2 h-9 text-muted-foreground hover:text-foreground"
               >
                 {showAutoText ? (
                   <>
                     <EyeOff className="h-4 w-4" />
-                    Hide Auto Text
+                    <span>Hide Auto Text</span>
                   </>
                 ) : (
                   <>
                     <Eye className="h-4 w-4" />
-                    Show Auto Text
+                    <span>Show Auto Text</span>
                   </>
                 )}
               </Button>
+
               <Button
                 onClick={handleExtractLineText}
                 variant="ghost"
                 size="sm"
                 disabled={!currentLine || isExtractingLineText}
-                className="gap-2 h-8"
+                className="gap-2 h-9 text-muted-foreground hover:text-foreground"
               >
                 {isExtractingLineText ? (
                   <>
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                    Extracting...
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Extracting...</span>
                   </>
                 ) : (
                   <>
                     <FileText className="h-4 w-4" />
-                    Extract Text
+                    <span>Extract Text</span>
                   </>
                 )}
               </Button>
             </div>
           </div>
           <div className="flex-1 min-h-[120px]">
-            <ReactTransliterate
-              renderComponent={(props) => (
-                <Textarea
-                  {...props}
-                  // CORRECTED REF LOGIC BELOW
-                  id="corrected-text"
-                  placeholder="Enter or correct the text from the image..."
-                  ref={(element) => {
-                    // 1. Assign to your local ref (for auto-focus)
-                    textareaRef.current = element;
+            {isTransliterationEnabled ? (
+              <ReactTransliterate
+                renderComponent={(props) => (
+                  <Textarea
+                    {...props}
+                    id="corrected-text"
+                    placeholder="Enter or correct the text from the image..."
+                    ref={(element) => {
+                      // 1. Assign to your local ref (for auto-focus)
+                      textareaRef.current = element;
 
-                    // 2. Safely assign to the library's ref
-                    // The library might pass a callback OR an object ref
-                    if (props.ref) {
-                      if (typeof props.ref === "function") {
-                        props.ref(element);
-                      } else {
-                        // It's an object ref, so we assign to .current
-                        // @ts-ignore
-                        props.ref.current = element;
+                      // 2. Safely assign to the library's ref
+                      // The library might pass a callback OR an object ref
+                      if (props.ref) {
+                        if (typeof props.ref === "function") {
+                          props.ref(element);
+                        } else {
+                          // It's an object ref, so we assign to .current
+                          // @ts-ignore
+                          props.ref.current = element;
+                        }
                       }
-                    }
-                  }}
-                  className="h-full font-mono text-lg resize-none"
-                  disabled={!!currentLine?.is_invalid}
-                />
-              )}
-              value={correctedText}
-              onChangeText={(text) => setCorrectedText(text)}
-              lang="si"
-              containerStyles={{ height: "100%" }} // Ensure container takes full height
-            />
+                    }}
+                    className="h-full font-mono text-lg resize-none"
+                    disabled={!!currentLine?.is_invalid}
+                  />
+                )}
+                value={correctedText}
+                onChangeText={(text) => setCorrectedText(text)}
+                lang="si"
+                containerStyles={{ height: "100%" }} // Ensure container takes full height
+              />
+            ) : (
+              <Textarea
+                id="corrected-text"
+                placeholder="Enter or correct the text from the image..."
+                ref={textareaRef}
+                className="h-full font-mono text-lg resize-none"
+                disabled={!!currentLine?.is_invalid}
+                value={correctedText}
+                onChange={(e) => setCorrectedText(e.target.value)}
+              />
+            )}
           </div>
         </div>
 
