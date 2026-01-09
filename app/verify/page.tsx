@@ -18,7 +18,7 @@ import {
   TrendingUp,
   Loader2,
 } from "lucide-react";
-import { getVerificationStats } from "@/lib/dashboard-api";
+import { getVerificationStats, getTeamActivity } from "@/lib/dashboard-api";
 import { showToast } from "@/lib/toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -52,22 +52,29 @@ export default function VerifyPage() {
     unverified_lines: 0,
     pending_reviews: 0,
   });
+  const [teamActivity, setTeamActivity] = useState<
+    Array<{ user_id: string; name: string; verified_lines: number }>
+  >([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchData = async () => {
       try {
-        const data = await getVerificationStats();
-        setStats(data);
+        const [statsData, teamData] = await Promise.all([
+          getVerificationStats(),
+          getTeamActivity("weekly"),
+        ]);
+        setStats(statsData);
+        setTeamActivity(teamData);
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : "Failed to load stats";
+          error instanceof Error ? error.message : "Failed to load data";
         showToast({ message, variant: "error" });
       } finally {
         setIsLoading(false);
       }
     };
-    fetchStats();
+    fetchData();
   }, []);
   if (isLoading) {
     return (
@@ -254,20 +261,27 @@ export default function VerifyPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">John Doe</span>
-                        <Badge>456 lines</Badge>
+                    {teamActivity.length > 0 ? (
+                      <div className="space-y-3">
+                        {teamActivity.map((member) => (
+                          <div
+                            key={member.user_id}
+                            className="flex items-center justify-between"
+                          >
+                            <span className="text-sm font-medium">
+                              {member.name}
+                            </span>
+                            <Badge>
+                              {member.verified_lines.toLocaleString()} lines
+                            </Badge>
+                          </div>
+                        ))}
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Jane Smith</span>
-                        <Badge>389 lines</Badge>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Bob Wilson</span>
-                        <Badge>267 lines</Badge>
-                      </div>
-                    </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        No team activity data available
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               </div>

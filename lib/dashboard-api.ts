@@ -12,7 +12,16 @@ export async function getVerificationStats() {
   });
 }
 
-// pendingReview: 0;
-// totalLines: 653;
-// unverifiedLines: 464;
-// verifiedLines: 189;
+export async function getTeamActivity(
+  range: "weekly" | "monthly" | "all" = "weekly"
+) {
+  return apiFetch<
+    Array<{
+      user_id: string;
+      name: string;
+      verified_lines: number;
+    }>
+  >(`${API_BASE_URL}/dashboard/team-activity?range=${range}`, {
+    method: "GET",
+  });
+}
