@@ -18,7 +18,11 @@ import {
   TrendingUp,
   Loader2,
 } from "lucide-react";
-import { getVerificationStats, getTeamActivity } from "@/lib/dashboard-api";
+import {
+  getVerificationStats,
+  getTeamActivity,
+  getVerificationWeekly,
+} from "@/lib/dashboard-api";
 import { showToast } from "@/lib/toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -35,16 +39,6 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 
-const mockChartData = [
-  { name: "Mon", verified: 245, pending: 56 },
-  { name: "Tue", verified: 312, pending: 48 },
-  { name: "Wed", verified: 289, pending: 62 },
-  { name: "Thu", verified: 356, pending: 41 },
-  { name: "Fri", verified: 298, pending: 53 },
-  { name: "Sat", verified: 178, pending: 34 },
-  { name: "Sun", verified: 134, pending: 28 },
-];
-
 export default function VerifyPage() {
   const [stats, setStats] = useState({
     total_lines: 0,
@@ -55,17 +49,22 @@ export default function VerifyPage() {
   const [teamActivity, setTeamActivity] = useState<
     Array<{ user_id: string; name: string; verified_lines: number }>
   >([]);
+  const [weeklyData, setWeeklyData] = useState<
+    Array<{ day: string; verified: number; pending: number }>
+  >([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [statsData, teamData] = await Promise.all([
+        const [statsData, teamData, weeklyChartData] = await Promise.all([
           getVerificationStats(),
           getTeamActivity("weekly"),
+          getVerificationWeekly(7),
         ]);
         setStats(statsData);
         setTeamActivity(teamData);
+        setWeeklyData(weeklyChartData);
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Failed to load data";
@@ -195,8 +194,8 @@ export default function VerifyPage() {
                         className="h-64 md:h-80"
                       >
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={mockChartData}>
-                            <XAxis dataKey="name" />
+                          <BarChart data={weeklyData}>
+                            <XAxis dataKey="day" />
                             <YAxis />
                             <ChartTooltip content={<ChartTooltipContent />} />
                             <Legend />

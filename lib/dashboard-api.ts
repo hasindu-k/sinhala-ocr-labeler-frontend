@@ -25,3 +25,15 @@ export async function getTeamActivity(
     method: "GET",
   });
 }
+
+export async function getVerificationWeekly(days: number = 7) {
+  return apiFetch<
+    Array<{
+      day: string;
+      verified: number;
+      pending: number;
+    }>
+  >(`${API_BASE_URL}/dashboard/verification-weekly?days=${days}`, {
+    method: "GET",
+  });
+}
