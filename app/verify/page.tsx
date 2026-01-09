@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { NavHeader } from "@/components/nav-header";
 import {
   Card,
@@ -15,7 +16,10 @@ import {
   FileText,
   AlertCircle,
   TrendingUp,
+  Loader2,
 } from "lucide-react";
+import { getVerificationStats } from "@/lib/dashboard-api";
+import { showToast } from "@/lib/toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Bar,
@@ -31,13 +35,6 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 
-const mockStats = {
-  totalLines: 6550,
-  verifiedLines: 5190,
-  unverifiedLines: 1360,
-  pendingReview: 450,
-};
-
 const mockChartData = [
   { name: "Mon", verified: 245, pending: 56 },
   { name: "Tue", verified: 312, pending: 48 },
@@ -49,6 +46,42 @@ const mockChartData = [
 ];
 
 export default function VerifyPage() {
+  const [stats, setStats] = useState({
+    total_lines: 0,
+    verified_lines: 0,
+    unverified_lines: 0,
+    pending_reviews: 0,
+  });
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const data = await getVerificationStats();
+        setStats(data);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to load stats";
+        showToast({ message, variant: "error" });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <NavHeader />
+        <main className="container py-6 px-4 sm:px-6">
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <NavHeader />
@@ -90,7 +123,7 @@ export default function VerifyPage() {
                       Total Lines
                     </CardDescription>
                     <CardTitle className="text-2xl sm:text-3xl">
-                      {mockStats.totalLines.toLocaleString()}
+                      {stats.total_lines.toLocaleString()}
                     </CardTitle>
                   </CardHeader>
                 </Card>
@@ -101,7 +134,7 @@ export default function VerifyPage() {
                       Verified
                     </CardDescription>
                     <CardTitle className="text-2xl sm:text-3xl text-green-600 dark:text-green-400">
-                      {mockStats.verifiedLines.toLocaleString()}
+                      {stats.verified_lines.toLocaleString()}
                     </CardTitle>
                   </CardHeader>
                 </Card>
@@ -112,7 +145,7 @@ export default function VerifyPage() {
                       Unverified
                     </CardDescription>
                     <CardTitle className="text-2xl sm:text-3xl text-yellow-600 dark:text-yellow-400">
-                      {mockStats.unverifiedLines.toLocaleString()}
+                      {stats.unverified_lines.toLocaleString()}
                     </CardTitle>
                   </CardHeader>
                 </Card>
@@ -123,7 +156,7 @@ export default function VerifyPage() {
                       Pending
                     </CardDescription>
                     <CardTitle className="text-2xl sm:text-3xl">
-                      {mockStats.pendingReview.toLocaleString()}
+                      {stats.pending_reviews.toLocaleString()}
                     </CardTitle>
                   </CardHeader>
                 </Card>
@@ -196,14 +229,16 @@ export default function VerifyPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-5xl font-bold text-primary">
-                      {Math.round(
-                        (mockStats.verifiedLines / mockStats.totalLines) * 100
-                      )}
+                      {stats.total_lines > 0
+                        ? Math.round(
+                            (stats.verified_lines / stats.total_lines) * 100
+                          )
+                        : 0}
                       %
                     </div>
                     <p className="text-sm text-muted-foreground mt-2">
-                      {mockStats.verifiedLines.toLocaleString()} of{" "}
-                      {mockStats.totalLines.toLocaleString()} lines verified
+                      {stats.verified_lines.toLocaleString()} of{" "}
+                      {stats.total_lines.toLocaleString()} lines verified
                     </p>
                   </CardContent>
                 </Card>
