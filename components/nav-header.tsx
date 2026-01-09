@@ -36,6 +36,7 @@ const navigation = [
   { name: "Label", href: "/label", icon: FileText },
   { name: "Verify", href: "/verify", icon: CheckCircle2 },
   { name: "Datasets", href: "/datasets", icon: Database },
+  { name: "Users", href: "/users", icon: Users, is_admin: true },
 ];
 
 export function NavHeader() {
@@ -67,6 +68,7 @@ export function NavHeader() {
           {/* Desktop Nav ... */}
           <nav className="hidden md:flex items-center gap-1">
             {navigation.map((item) => {
+              if (item.is_admin && user.role !== "admin") return null;
               const Icon = item.icon;
               return (
                 <Link key={item.name} href={item.href}>
@@ -110,12 +112,14 @@ export function NavHeader() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/users">
-                  <Users className="mr-2 h-4 w-4" />
-                  User Management
-                </Link>
-              </DropdownMenuItem>
+              {user.role === "admin" && (
+                <DropdownMenuItem asChild>
+                  <Link href="/users">
+                    <Users className="mr-2 h-4 w-4" />
+                    User Management
+                  </Link>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem>Settings</DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="text-destructive" onClick={logout}>
