@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { NavHeader } from "@/components/nav-header";
 import {
   Card,
@@ -9,22 +8,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   CheckCircle2,
-  Search,
-  Filter,
-  Eye,
   Users,
   FileText,
   AlertCircle,
@@ -45,50 +31,6 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 
-// Mock data
-const mockUnverifiedLines = [
-  {
-    id: "1",
-    lineNumber: 45,
-    documentName: "historical-manuscript-1890.pdf",
-    pageNumber: 3,
-    autoText: "In the year of our Lord eighteen hundred",
-    correctedText: "In the year of our Lord eighteen hundred",
-    assignedTo: "John Doe",
-    status: "pending",
-  },
-  {
-    id: "2",
-    lineNumber: 78,
-    documentName: "legal-document-bundle.pdf",
-    pageNumber: 5,
-    autoText: "Pursuant to Section 12(a) of the Act",
-    correctedText: "Pursuant to Section 12(a) of the Act",
-    assignedTo: "Jane Smith",
-    status: "pending",
-  },
-  {
-    id: "3",
-    lineNumber: 92,
-    documentName: "historical-manuscript-1890.pdf",
-    pageNumber: 6,
-    autoText: "witnessed by the undersigned notary",
-    correctedText: "witnessed by the undersigned notary public",
-    assignedTo: "John Doe",
-    status: "pending",
-  },
-  {
-    id: "4",
-    lineNumber: 123,
-    documentName: "legal-document-bundle.pdf",
-    pageNumber: 8,
-    autoText: "This agreement shall be binding upon",
-    correctedText: "This agreement shall be binding upon",
-    assignedTo: null,
-    status: "pending",
-  },
-];
-
 const mockStats = {
   totalLines: 6550,
   verifiedLines: 5190,
@@ -107,44 +49,6 @@ const mockChartData = [
 ];
 
 export default function VerifyPage() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [filterDocument, setFilterDocument] = useState("all");
-  const [selectedLines, setSelectedLines] = useState<string[]>([]);
-  const [lines] = useState(mockUnverifiedLines);
-
-  const filteredLines = lines.filter((line) => {
-    const matchesSearch =
-      line.autoText.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      line.documentName.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus =
-      filterStatus === "all" || line.status === filterStatus;
-    const matchesDocument =
-      filterDocument === "all" || line.documentName === filterDocument;
-    return matchesSearch && matchesStatus && matchesDocument;
-  });
-
-  const handleSelectAll = () => {
-    if (selectedLines.length === filteredLines.length) {
-      setSelectedLines([]);
-    } else {
-      setSelectedLines(filteredLines.map((line) => line.id));
-    }
-  };
-
-  const handleSelectLine = (lineId: string) => {
-    setSelectedLines((current) =>
-      current.includes(lineId)
-        ? current.filter((id) => id !== lineId)
-        : [...current, lineId]
-    );
-  };
-
-  const handleBulkVerify = () => {
-    alert(`Verifying ${selectedLines.length} lines...`);
-    setSelectedLines([]);
-  };
-
   return (
     <div className="min-h-screen bg-background">
       <NavHeader />
@@ -167,12 +71,6 @@ export default function VerifyPage() {
                 className="min-w-[100px] sm:min-w-[120px]"
               >
                 Overview
-              </TabsTrigger>
-              <TabsTrigger
-                value="lines"
-                className="min-w-[120px] sm:min-w-[140px]"
-              >
-                Unverified Lines
               </TabsTrigger>
               <TabsTrigger
                 value="statistics"
@@ -278,151 +176,6 @@ export default function VerifyPage() {
                         </ResponsiveContainer>
                       </ChartContainer>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Unverified Lines Tab */}
-            <TabsContent value="lines" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                      <CardTitle>Unverified Lines</CardTitle>
-                      <CardDescription className="text-sm sm:text-base">
-                        {filteredLines.length} lines pending verification
-                      </CardDescription>
-                    </div>
-                    {selectedLines.length > 0 && (
-                      <Button
-                        onClick={handleBulkVerify}
-                        className="gap-2 w-full sm:w-fit"
-                      >
-                        <CheckCircle2 className="h-4 w-4" />
-                        Verify {selectedLines.length} Selected
-                      </Button>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Filters */}
-                  <div className="flex flex-col gap-3 md:flex-row md:items-center">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        placeholder="Search lines..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-9"
-                      />
-                    </div>
-                    <Select
-                      value={filterDocument}
-                      onValueChange={setFilterDocument}
-                    >
-                      <SelectTrigger className="w-full md:w-64">
-                        <Filter className="mr-2 h-4 w-4" />
-                        <SelectValue placeholder="All Documents" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Documents</SelectItem>
-                        <SelectItem value="historical-manuscript-1890.pdf">
-                          Historical Manuscript
-                        </SelectItem>
-                        <SelectItem value="legal-document-bundle.pdf">
-                          Legal Documents
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Lines List */}
-                  <div className="space-y-3">
-                    {filteredLines.length > 0 ? (
-                      <>
-                        <div className="flex items-center gap-2 px-4 py-2 border-b">
-                          <Checkbox
-                            checked={
-                              selectedLines.length === filteredLines.length
-                            }
-                            onCheckedChange={handleSelectAll}
-                          />
-                          <span className="text-sm font-medium">
-                            Select All
-                          </span>
-                        </div>
-                        {filteredLines.map((line) => (
-                          <div
-                            key={line.id}
-                            className="flex flex-col sm:flex-row sm:items-start gap-3 rounded-lg border p-4 hover:bg-accent/50"
-                          >
-                            <Checkbox
-                              checked={selectedLines.includes(line.id)}
-                              onCheckedChange={() => handleSelectLine(line.id)}
-                              className="mt-1"
-                            />
-                            <div className="flex-1 min-w-0 space-y-3">
-                              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-                                <div className="flex flex-wrap items-center gap-2 text-sm">
-                                  <span className="font-semibold">
-                                    Line {line.lineNumber}
-                                  </span>
-                                  <span className="text-muted-foreground">
-                                    •
-                                  </span>
-                                  <span className="text-muted-foreground">
-                                    {line.documentName}
-                                  </span>
-                                  <span className="text-muted-foreground">
-                                    •
-                                  </span>
-                                  <span className="text-muted-foreground">
-                                    Page {line.pageNumber}
-                                  </span>
-                                </div>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="shrink-0 gap-2 w-full sm:w-auto"
-                                >
-                                  <Eye className="h-4 w-4" />
-                                  View
-                                </Button>
-                              </div>
-                              <div className="space-y-1">
-                                <p className="text-sm text-muted-foreground">
-                                  Auto: {line.autoText}
-                                </p>
-                                {line.correctedText !== line.autoText && (
-                                  <p className="text-sm font-medium">
-                                    Corrected: {line.correctedText}
-                                  </p>
-                                )}
-                              </div>
-                              {line.assignedTo && (
-                                <div className="flex items-center gap-2">
-                                  <Users className="h-3 w-3 text-muted-foreground" />
-                                  <span className="text-xs text-muted-foreground">
-                                    Assigned to {line.assignedTo}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center py-12 text-center">
-                        <CheckCircle2 className="h-12 w-12 text-muted-foreground mb-3" />
-                        <h3 className="font-semibold mb-1">
-                          No unverified lines found
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                          All lines matching your filters are verified
-                        </p>
-                      </div>
-                    )}
                   </div>
                 </CardContent>
               </Card>
