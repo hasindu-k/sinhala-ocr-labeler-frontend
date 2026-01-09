@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { uploadDocument } from "@/lib/documents-api";
 import { showToast } from "@/lib/toast";
 import { useRouter } from "next/navigation";
+import { CropModal } from "@/components/crop-modal";
 
 export default function UploadPage() {
   const [isDragging, setIsDragging] = useState(false);
@@ -24,6 +25,14 @@ export default function UploadPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const router = useRouter();
+
+  // Image cropping flow state
+  const [imageQueue, setImageQueue] = useState<File[]>([]);
+  const [currentImageFile, setCurrentImageFile] = useState<File | null>(null);
+  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+  const [isCropOpen, setIsCropOpen] = useState(false);
+  const [processedCount, setProcessedCount] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -54,15 +63,22 @@ export default function UploadPage() {
     const pdfFiles = files.filter(
       (file) => file.type === "application/pdf" || file.name.endsWith(".pdf")
     );
-    if (pdfFiles.length === 0) {
-      showToast({ message: "Please select PDF files only", variant: "error" });
+    const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+    if (pdfFiles.length === 0 && imageFiles.length === 0) {
+      showToast({
+        message: "Please select PDF or image files",
+        variant: "error",
+      });
       return;
     }
 
     setIsUploading(true);
     setUploadProgress(0);
+    setProcessedCount(0);
+    setTotalCount(pdfFiles.length + imageFiles.length);
 
     try {
+      // 1) Process PDFs as-is
       for (let i = 0; i < pdfFiles.length; i++) {
         const file = pdfFiles[i];
         try {
@@ -77,15 +93,139 @@ export default function UploadPage() {
             error instanceof Error ? error.message : "Upload failed";
           showToast({ message: `${file.name}: ${message}`, variant: "error" });
         } finally {
-          setUploadProgress(Math.round(((i + 1) / pdfFiles.length) * 100));
+          setProcessedCount((prev) => {
+            const nextProcessed = prev + 1;
+            setUploadProgress(Math.round((nextProcessed / totalCount) * 100));
+            return nextProcessed;
+          });
         }
       }
+
+      // 2) Queue images for cropping and upload one-by-one
+      if (imageFiles.length > 0) {
+        setImageQueue(imageFiles);
+        openNextImage(imageFiles[0]);
+      } else {
+        // No images, finalize
+        finalizeUpload();
+      }
     } finally {
-      setTimeout(() => {
-        router.push("/documents");
-      }, 1000);
-      setIsUploading(false);
+      // Do not finalize here; images may still be processing via modal
     }
+  };
+
+  const openNextImage = (file: File | undefined) => {
+    if (!file) {
+      finalizeUpload();
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setCurrentImageFile(file);
+    setCurrentImageUrl(url);
+    setIsCropOpen(true);
+  };
+
+  const closeCropModal = () => {
+    if (currentImageUrl) URL.revokeObjectURL(currentImageUrl);
+    setIsCropOpen(false);
+    setCurrentImageUrl(null);
+    setCurrentImageFile(null);
+  };
+
+  const handleImageSave = async (newImage: Blob) => {
+    if (!currentImageFile) return;
+    try {
+      const croppedFile = new File(
+        [newImage],
+        renameToPng(currentImageFile.name),
+        {
+          type: "image/png",
+        }
+      );
+      const doc = await uploadDocument(croppedFile);
+      setUploadedFiles((current) => [
+        ...current,
+        doc.original_filename || croppedFile.name,
+      ]);
+      showToast({
+        message: `${croppedFile.name} uploaded`,
+        variant: "success",
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Upload failed";
+      showToast({
+        message: `${currentImageFile.name}: ${message}`,
+        variant: "error",
+      });
+    } finally {
+      setProcessedCount((prev) => {
+        const nextProcessed = prev + 1;
+        setUploadProgress(Math.round((nextProcessed / totalCount) * 100));
+        return nextProcessed;
+      });
+
+      // Move to next image in queue
+      const [_, ...rest] = imageQueue;
+      setImageQueue(rest);
+      closeCropModal();
+      openNextImage(rest[0]);
+    }
+  };
+
+  const handleImageSkip = async () => {
+    // If user cancels, upload original image without cropping
+    if (!currentImageFile) {
+      closeCropModal();
+      return;
+    }
+    try {
+      const doc = await uploadDocument(currentImageFile);
+      setUploadedFiles((current) => [
+        ...current,
+        doc.original_filename || currentImageFile.name,
+      ]);
+      showToast({
+        message: `${currentImageFile.name} uploaded`,
+        variant: "success",
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Upload failed";
+      showToast({
+        message: `${currentImageFile.name}: ${message}`,
+        variant: "error",
+      });
+    } finally {
+      setProcessedCount((prev) => {
+        const nextProcessed = prev + 1;
+        setUploadProgress(Math.round((nextProcessed / totalCount) * 100));
+        return nextProcessed;
+      });
+
+      // Move to next image in queue
+      const [_, ...rest] = imageQueue;
+      setImageQueue(rest);
+      closeCropModal();
+      openNextImage(rest[0]);
+    }
+  };
+
+  function renameToPng(name: string) {
+    const idx = name.lastIndexOf(".");
+    return idx > 0 ? `${name.substring(0, idx)}.png` : `${name}.png`;
+  }
+
+  const finalizeUpload = () => {
+    // Navigate to documents after a short delay and reset state
+    setTimeout(() => {
+      router.push("/documents");
+    }, 1000);
+    setIsUploading(false);
+    setImageQueue([]);
+    setCurrentImageFile(null);
+    setCurrentImageUrl(null);
+    setIsCropOpen(false);
+    setProcessedCount(0);
+    setTotalCount(0);
   };
 
   return (
@@ -124,7 +264,7 @@ export default function UploadPage() {
                   type="file"
                   id="file-upload"
                   className="sr-only"
-                  accept=".pdf"
+                  accept=".pdf,image/*"
                   multiple
                   onChange={handleFileInput}
                   disabled={isUploading}
@@ -141,10 +281,10 @@ export default function UploadPage() {
                   <p className="text-lg font-medium mb-2">
                     {isUploading
                       ? "Uploading..."
-                      : "Drop PDF files here or click to browse"}
+                      : "Drop PDF or image files here or click to browse"}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Supports multiple PDF files
+                    Supports multiple PDF and image files
                   </p>
                 </label>
 
@@ -188,6 +328,16 @@ export default function UploadPage() {
           )}
         </div>
       </main>
+
+      {/* Image Crop Modal */}
+      {currentImageUrl && (
+        <CropModal
+          isOpen={isCropOpen}
+          onClose={handleImageSkip}
+          imageUrl={currentImageUrl}
+          onSave={handleImageSave}
+        />
+      )}
     </div>
   );
 }

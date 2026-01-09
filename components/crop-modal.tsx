@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useMemo } from "react";
 import ReactCrop, {
   type Crop,
   centerCrop,
@@ -30,7 +30,7 @@ export function CropModal({
   onClose,
   imageUrl,
   onSave,
-}: CropModalProps) {
+}: Readonly<CropModalProps>) {
   const [crop, setCrop] = useState<Crop>();
   const [isSaving, setIsSaving] = useState(false);
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
@@ -94,8 +94,18 @@ export function CropModal({
 
   const corsImageUrl = useMemo(() => {
     if (!imageUrl) return "";
-    // Append a static timestamp for this specific image session
-    return `${imageUrl}?ts=static-${Date.now()}`;
+    // Keep blob/data URLs as-is; add cache-busting only for http/https URLs
+    if (imageUrl.startsWith("blob:") || imageUrl.startsWith("data:")) {
+      return imageUrl;
+    }
+    try {
+      const base = globalThis?.location?.origin;
+      const u = new URL(imageUrl, base);
+      u.searchParams.set("t", String(Date.now()));
+      return u.toString();
+    } catch {
+      return imageUrl;
+    }
   }, [imageUrl]);
 
   return (
@@ -154,7 +164,11 @@ export function CropModal({
                 <img
                   ref={imgRef}
                   src={corsImageUrl}
-                  crossOrigin="anonymous"
+                  crossOrigin={
+                    imageUrl.startsWith("blob:") || imageUrl.startsWith("data:")
+                      ? undefined
+                      : "anonymous"
+                  }
                   onLoad={onImageLoad}
                   alt="Crop me"
                   className="max-w-full"
