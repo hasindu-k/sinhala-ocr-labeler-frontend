@@ -6,6 +6,8 @@ export interface DocumentResponse {
   total_pages: number;
   lines_extracted?: number;
   lines_verified?: number;
+  document_type: "pdf" | "image";
+  uploaded_by: string;
   pages_folder?: string;
   created_at?: string;
   updated_at?: string;

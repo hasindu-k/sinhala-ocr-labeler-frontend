@@ -1,7 +1,6 @@
 "use client";
 
 import type React from "react";
-
 import { useState } from "react";
 import { NavHeader } from "@/components/nav-header";
 import {
@@ -14,7 +13,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Upload, FileText, CheckCircle2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { uploadDocument } from "@/lib/documents-api";
+import { uploadDocuments } from "@/lib/documents-api";
 import { showToast } from "@/lib/toast";
 import { useRouter } from "next/navigation";
 import { CropModal } from "@/components/crop-modal";
@@ -26,13 +25,16 @@ export default function UploadPage() {
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const router = useRouter();
 
-  // Image cropping flow state
-  const [imageQueue, setImageQueue] = useState<File[]>([]);
+  // Image cropping flow
+  const [imageQueue, setImageQueue] = useState<File[]>([]); // raw images
   const [currentImageFile, setCurrentImageFile] = useState<File | null>(null);
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
   const [isCropOpen, setIsCropOpen] = useState(false);
   const [processedCount, setProcessedCount] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
+
+  // Tracks multiple crops for current raw image
+  const [currentCrops, setCurrentCrops] = useState<Blob[]>([]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -64,6 +66,7 @@ export default function UploadPage() {
       (file) => file.type === "application/pdf" || file.name.endsWith(".pdf")
     );
     const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+
     if (pdfFiles.length === 0 && imageFiles.length === 0) {
       showToast({
         message: "Please select PDF or image files",
@@ -78,39 +81,43 @@ export default function UploadPage() {
     setTotalCount(pdfFiles.length + imageFiles.length);
 
     try {
-      // 1) Process PDFs as-is
-      for (let i = 0; i < pdfFiles.length; i++) {
-        const file = pdfFiles[i];
+      // 1️⃣ Upload PDFs in batch
+      if (pdfFiles.length > 0) {
         try {
-          const doc = await uploadDocument(file);
-          setUploadedFiles((current) => [
-            ...current,
-            doc.original_filename || file.name,
-          ]);
-          showToast({ message: `${file.name} uploaded`, variant: "success" });
-        } catch (error) {
-          const message =
-            error instanceof Error ? error.message : "Upload failed";
-          showToast({ message: `${file.name}: ${message}`, variant: "error" });
+          const docs = await uploadDocuments(pdfFiles);
+          docs.forEach((doc, index) => {
+            setUploadedFiles((current) => [
+              ...current,
+              doc.original_filename || pdfFiles[index].name,
+            ]);
+          });
+          showToast({
+            message: `${pdfFiles.length} PDF(s) uploaded`,
+            variant: "success",
+          });
+        } catch {
+          showToast({
+            message: "PDF upload failed",
+            variant: "error",
+          });
         } finally {
           setProcessedCount((prev) => {
-            const nextProcessed = prev + 1;
-            setUploadProgress(Math.round((nextProcessed / totalCount) * 100));
-            return nextProcessed;
+            const next = prev + pdfFiles.length;
+            setUploadProgress(Math.round((next / totalCount) * 100));
+            return next;
           });
         }
       }
 
-      // 2) Queue images for cropping and upload one-by-one
+      // 2️⃣ Queue images for cropping
       if (imageFiles.length > 0) {
         setImageQueue(imageFiles);
         openNextImage(imageFiles[0]);
       } else {
-        // No images, finalize
         finalizeUpload();
       }
     } finally {
-      // Do not finalize here; images may still be processing via modal
+      // Images will continue processing in modal
     }
   };
 
@@ -123,6 +130,7 @@ export default function UploadPage() {
     setCurrentImageFile(file);
     setCurrentImageUrl(url);
     setIsCropOpen(true);
+    setCurrentCrops([]); // reset crops for this raw image
   };
 
   const closeCropModal = () => {
@@ -132,81 +140,56 @@ export default function UploadPage() {
     setCurrentImageFile(null);
   };
 
+  // 3️⃣ Upload **cropped image**
   const handleImageSave = async (newImage: Blob) => {
     if (!currentImageFile) return;
+
     try {
       const croppedFile = new File(
         [newImage],
         renameToPng(currentImageFile.name),
-        {
-          type: "image/png",
-        }
+        { type: "image/png" }
       );
-      const doc = await uploadDocument(croppedFile);
+
+      const [doc] = await uploadDocuments([croppedFile]);
+
       setUploadedFiles((current) => [
         ...current,
         doc.original_filename || croppedFile.name,
       ]);
+
       showToast({
         message: `${croppedFile.name} uploaded`,
         variant: "success",
       });
+
+      setCurrentCrops((prev) => [...prev, newImage]); // keep track of multiple crops
     } catch (error) {
       const message = error instanceof Error ? error.message : "Upload failed";
       showToast({
         message: `${currentImageFile.name}: ${message}`,
         variant: "error",
       });
-    } finally {
-      setProcessedCount((prev) => {
-        const nextProcessed = prev + 1;
-        setUploadProgress(Math.round((nextProcessed / totalCount) * 100));
-        return nextProcessed;
-      });
-
-      // Move to next image in queue
-      const [_, ...rest] = imageQueue;
-      setImageQueue(rest);
-      closeCropModal();
-      openNextImage(rest[0]);
     }
   };
 
-  const handleImageSkip = async () => {
-    // If user cancels, upload original image without cropping
-    if (!currentImageFile) {
-      closeCropModal();
-      return;
-    }
-    try {
-      const doc = await uploadDocument(currentImageFile);
-      setUploadedFiles((current) => [
-        ...current,
-        doc.original_filename || currentImageFile.name,
-      ]);
-      showToast({
-        message: `${currentImageFile.name} uploaded`,
-        variant: "success",
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Upload failed";
-      showToast({
-        message: `${currentImageFile.name}: ${message}`,
-        variant: "error",
-      });
-    } finally {
-      setProcessedCount((prev) => {
-        const nextProcessed = prev + 1;
-        setUploadProgress(Math.round((nextProcessed / totalCount) * 100));
-        return nextProcessed;
-      });
+  // 4️⃣ Finish cropping for current raw image
+  const handleCropDone = () => {
+    const [_, ...rest] = imageQueue;
+    setImageQueue(rest);
+    closeCropModal();
+    openNextImage(rest[0]);
+    setProcessedCount((prev) => {
+      const nextProcessed = prev + 1;
+      setUploadProgress(Math.round((nextProcessed / totalCount) * 100));
+      return nextProcessed;
+    });
+    setCurrentCrops([]);
+  };
 
-      // Move to next image in queue
-      const [_, ...rest] = imageQueue;
-      setImageQueue(rest);
-      closeCropModal();
-      openNextImage(rest[0]);
-    }
+  // Skip button → finish cropping without adding more crops
+  const handleImageSkip = () => {
+    handleCropDone();
   };
 
   function renameToPng(name: string) {
@@ -215,10 +198,7 @@ export default function UploadPage() {
   }
 
   const finalizeUpload = () => {
-    // Navigate to documents after a short delay and reset state
-    setTimeout(() => {
-      router.push("/documents");
-    }, 1000);
+    setTimeout(() => router.push("/documents"), 1000);
     setIsUploading(false);
     setImageQueue([]);
     setCurrentImageFile(null);
@@ -237,15 +217,15 @@ export default function UploadPage() {
           <div>
             <h1 className="text-3xl font-bold">Upload Documents</h1>
             <p className="text-muted-foreground">
-              Upload PDF documents to begin the annotation process
+              Upload PDFs and crop images (multiple crops per image)
             </p>
           </div>
 
           <Card>
             <CardHeader>
-              <CardTitle>Upload PDF Files</CardTitle>
+              <CardTitle>Upload Files</CardTitle>
               <CardDescription>
-                Drag and drop or click to select PDF files for processing
+                Drag & drop or click to select PDF or image files
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -284,7 +264,7 @@ export default function UploadPage() {
                       : "Drop PDF or image files here or click to browse"}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Supports multiple PDF and image files
+                    Supports multiple PDFs and images with multiple crops
                   </p>
                 </label>
 
@@ -329,13 +309,15 @@ export default function UploadPage() {
         </div>
       </main>
 
-      {/* Image Crop Modal */}
-      {currentImageUrl && (
+      {/* Crop Modal */}
+      {currentImageUrl && currentImageFile && (
         <CropModal
           isOpen={isCropOpen}
           onClose={handleImageSkip}
           imageUrl={currentImageUrl}
           onSave={handleImageSave}
+          isDefaultCropNeeded={false}
+          onDone={handleCropDone} // optional "Finish" button to stop cropping this raw image
         />
       )}
     </div>

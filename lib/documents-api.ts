@@ -2,11 +2,14 @@ import { apiFetch } from "@/lib/client";
 import { API_BASE_URL } from "@/lib/config";
 import type { DocumentResponse, LineResponse } from "@/types/documents";
 
-export async function uploadDocument(file: File) {
+export async function uploadDocuments(files: File[]) {
   const formData = new FormData();
-  formData.append("file", file);
 
-  return apiFetch<DocumentResponse>(`${API_BASE_URL}/documents/upload`, {
+  files.forEach((file) => {
+    formData.append("files", file);
+  });
+
+  return apiFetch<DocumentResponse[]>(`${API_BASE_URL}/documents/upload`, {
     method: "POST",
     body: formData,
   });
