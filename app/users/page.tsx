@@ -1,7 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavHeader } from "@/components/nav-header";
+import { getUsersActivity } from "@/lib/dashboard-api";
+import {
+  createUserAdmin,
+  updateUserAdmin,
+  deleteUserAdmin,
+} from "@/lib/users-api";
 import {
   Card,
   CardContent,
@@ -52,57 +58,25 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// Mock data
-const mockUsers = [
-  {
-    id: "1",
-    name: "John Doe",
-    email: "john.doe@example.com",
-    role: "admin",
-    linesAnnotated: 2456,
-    linesVerified: 2450,
-    lastActive: "2025-01-05T10:30:00",
-    status: "active",
-  },
-  {
-    id: "2",
-    name: "Jane Smith",
-    email: "jane.smith@example.com",
-    role: "reviewer",
-    linesAnnotated: 1923,
-    linesVerified: 1920,
-    lastActive: "2025-01-05T09:15:00",
-    status: "active",
-  },
-  {
-    id: "3",
-    name: "Bob Wilson",
-    email: "bob.wilson@example.com",
-    role: "annotator",
-    linesAnnotated: 1678,
-    linesVerified: 890,
-    lastActive: "2025-01-04T16:45:00",
-    status: "active",
-  },
-  {
-    id: "4",
-    name: "Alice Johnson",
-    email: "alice.j@example.com",
-    role: "annotator",
-    linesAnnotated: 945,
-    linesVerified: 234,
-    lastActive: "2025-01-03T14:20:00",
-    status: "inactive",
-  },
-];
+// Type definition
+type User = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  linesAnnotated: number;
+  linesVerified: number;
+  lastActive: string;
+  status: string;
+};
 
 export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [users] = useState(mockUsers);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<
-    (typeof mockUsers)[0] | null
-  >(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editUserData, setEditUserData] = useState({
     name: "",
@@ -111,7 +85,31 @@ export default function UsersPage() {
   });
   const [newUserName, setNewUserName] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserPassword, setNewUserPassword] = useState("");
   const [newUserRole, setNewUserRole] = useState("annotator");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+
+  // Fetch users activity data
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await getUsersActivity();
+      setUsers(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load users");
+      console.error("Error fetching users:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   const filteredUsers = users.filter(
     (user) =>
@@ -165,15 +163,38 @@ export default function UsersPage() {
       .toUpperCase();
   };
 
-  const handleAddUser = () => {
-    alert(`Adding user: ${newUserName} (${newUserEmail}) as ${newUserRole}`);
-    setIsAddUserOpen(false);
-    setNewUserName("");
-    setNewUserEmail("");
-    setNewUserRole("annotator");
+  const handleAddUser = async () => {
+    if (!newUserName || !newUserEmail || !newUserPassword) {
+      setSubmitError("Please fill in all required fields");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setSubmitError(null);
+      await createUserAdmin({
+        name: newUserName,
+        email: newUserEmail,
+        password: newUserPassword,
+        role: newUserRole,
+      });
+      setIsAddUserOpen(false);
+      setNewUserName("");
+      setNewUserEmail("");
+      setNewUserPassword("");
+      setNewUserRole("annotator");
+      await fetchUsers();
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error ? err.message : "Failed to create user"
+      );
+      console.error("Error creating user:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleEditUser = (user: (typeof mockUsers)[0]) => {
+  const handleEditUser = (user: User) => {
     setSelectedUser(user);
     setEditUserData({
       name: user.name,
@@ -183,12 +204,51 @@ export default function UsersPage() {
     setIsEditOpen(true);
   };
 
-  const handleSaveEdit = () => {
-    alert(
-      `Updating user: ${editUserData.name} (${editUserData.email}) as ${editUserData.role}`
-    );
-    setIsEditOpen(false);
-    setSelectedUser(null);
+  const handleSaveEdit = async () => {
+    if (!selectedUser) return;
+
+    try {
+      setIsSubmitting(true);
+      setSubmitError(null);
+      await updateUserAdmin(selectedUser.id, editUserData);
+      setIsEditOpen(false);
+      setSelectedUser(null);
+      await fetchUsers();
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error ? err.message : "Failed to update user"
+      );
+      console.error("Error updating user:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const openDeleteConfirm = (userId: string) => {
+    setDeleteUserId(userId);
+    setSubmitError(null);
+    setIsDeleteOpen(true);
+  };
+
+  const handleDeleteUser = async () => {
+    if (!deleteUserId) return;
+
+    try {
+      setIsSubmitting(true);
+      setSubmitError(null);
+      await deleteUserAdmin(deleteUserId);
+      setSelectedUser(null);
+      setIsDeleteOpen(false);
+      setDeleteUserId(null);
+      await fetchUsers();
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error ? err.message : "Failed to delete user"
+      );
+      console.error("Error deleting user:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -241,6 +301,16 @@ export default function UsersPage() {
                     />
                   </div>
                   <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="Enter password"
+                      value={newUserPassword}
+                      onChange={(e) => setNewUserPassword(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="role">Role</Label>
                     <Select value={newUserRole} onValueChange={setNewUserRole}>
                       <SelectTrigger id="role">
@@ -254,66 +324,26 @@ export default function UsersPage() {
                     </Select>
                   </div>
                 </div>
+                {submitError && (
+                  <div className="rounded-lg border border-destructive bg-destructive/10 p-3 text-destructive">
+                    <p className="text-sm">{submitError}</p>
+                  </div>
+                )}
                 <DialogFooter>
                   <Button
                     variant="outline"
                     onClick={() => setIsAddUserOpen(false)}
                     className="bg-transparent"
+                    disabled={isSubmitting}
                   >
                     Cancel
                   </Button>
-                  <Button onClick={handleAddUser}>Add User</Button>
+                  <Button onClick={handleAddUser} disabled={isSubmitting}>
+                    {isSubmitting ? "Adding..." : "Add User"}
+                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-          </div>
-
-          {/* User Stats */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardDescription className="text-xs sm:text-sm">
-                  Total Users
-                </CardDescription>
-                <CardTitle className="text-2xl sm:text-3xl">
-                  {users.length}
-                </CardTitle>
-              </CardHeader>
-            </Card>
-            <Card>
-              <CardHeader className="pb-3">
-                <CardDescription className="text-xs sm:text-sm">
-                  Active Users
-                </CardDescription>
-                <CardTitle className="text-2xl sm:text-3xl">
-                  {users.filter((u) => u.status === "active").length}
-                </CardTitle>
-              </CardHeader>
-            </Card>
-            <Card>
-              <CardHeader className="pb-3">
-                <CardDescription className="text-xs sm:text-sm">
-                  Total Annotations
-                </CardDescription>
-                <CardTitle className="text-2xl sm:text-3xl">
-                  {users
-                    .reduce((sum, u) => sum + u.linesAnnotated, 0)
-                    .toLocaleString()}
-                </CardTitle>
-              </CardHeader>
-            </Card>
-            <Card>
-              <CardHeader className="pb-3">
-                <CardDescription className="text-xs sm:text-sm">
-                  Total Verified
-                </CardDescription>
-                <CardTitle className="text-2xl sm:text-3xl">
-                  {users
-                    .reduce((sum, u) => sum + u.linesVerified, 0)
-                    .toLocaleString()}
-                </CardTitle>
-              </CardHeader>
-            </Card>
           </div>
 
           {/* Users List */}
@@ -336,12 +366,35 @@ export default function UsersPage() {
                 />
               </div>
 
+              {/* Loading State */}
+              {loading && (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">Loading users...</p>
+                </div>
+              )}
+
+              {/* Error State */}
+              {error && (
+                <div className="rounded-lg border border-destructive bg-destructive/10 p-4 text-destructive">
+                  <p className="font-medium">Error loading users</p>
+                  <p className="text-sm">{error}</p>
+                </div>
+              )}
+
               {/* User Cards */}
               <div className="space-y-3">
+                {!loading && !error && filteredUsers.length === 0 && (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">
+                      {searchQuery
+                        ? "No users match your search"
+                        : "No users found"}
+                    </p>
+                  </div>
+                )}
                 {filteredUsers.map((user) => (
                   <div
                     key={user.id}
-                    // Added 'relative' here to position the menu button absolutely on mobile
                     className="relative rounded-lg border p-3 sm:p-4 hover:bg-accent/50 transition-colors"
                   >
                     {/* Menu Button: Absolute on mobile to save width, Static on desktop */}
@@ -367,11 +420,11 @@ export default function UsersPage() {
                           >
                             <Edit className="mr-2 h-4 w-4" /> Edit User
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Shield className="mr-2 h-4 w-4" /> Change Role
-                          </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive">
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => openDeleteConfirm(user.id)}
+                          >
                             <Trash2 className="mr-2 h-4 w-4" /> Delete User
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -386,7 +439,7 @@ export default function UsersPage() {
                         </AvatarFallback>
                       </Avatar>
 
-                      {/* Content Container - pr-6 ensures text doesn't hit the absolute menu button on mobile */}
+                      {/* Content Container */}
                       <div className="flex-1 min-w-0 space-y-2 pr-6 sm:pr-0">
                         {/* Name & Badges */}
                         <div className="flex flex-wrap items-center gap-2">
@@ -405,7 +458,7 @@ export default function UsersPage() {
                           <span className="truncate">{user.email}</span>
                         </div>
 
-                        {/* Stats - Changed from grid to flex-col (stacked) on mobile to fix overlap */}
+                        {/* Stats */}
                         <div className="flex flex-col sm:flex-row gap-1 sm:gap-4 text-xs sm:text-sm pt-1">
                           <div>
                             <span className="text-muted-foreground">
@@ -460,10 +513,10 @@ export default function UsersPage() {
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <DialogTitle className="text-xl sm:text-2xl break-words">
+                      <DialogTitle className="text-xl sm:text-2xl wrap-break-word">
                         {selectedUser.name}
                       </DialogTitle>
-                      <DialogDescription className="mt-1 break-words">
+                      <DialogDescription className="mt-1 wrap-break-word">
                         {selectedUser.email}
                       </DialogDescription>
                     </div>
@@ -561,6 +614,41 @@ export default function UsersPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Delete User Confirm Dialog */}
+      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete User</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This will permanently remove the
+              user and associated access.
+            </DialogDescription>
+          </DialogHeader>
+          {submitError && (
+            <div className="rounded-lg border border-destructive bg-destructive/10 p-3 text-destructive">
+              <p className="text-sm">{submitError}</p>
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteOpen(false)}
+              className="bg-transparent"
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteUser}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Edit User Dialog */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="max-w-md">
@@ -610,16 +698,24 @@ export default function UsersPage() {
                 </SelectContent>
               </Select>
             </div>
+            {submitError && (
+              <div className="rounded-lg border border-destructive bg-destructive/10 p-3 text-destructive">
+                <p className="text-sm">{submitError}</p>
+              </div>
+            )}
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button
               variant="outline"
               onClick={() => setIsEditOpen(false)}
               className="bg-transparent"
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
-            <Button onClick={handleSaveEdit}>Save Changes</Button>
+            <Button onClick={handleSaveEdit} disabled={isSubmitting}>
+              {isSubmitting ? "Saving..." : "Save Changes"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -37,3 +37,20 @@ export async function getVerificationWeekly(days: number = 7) {
     method: "GET",
   });
 }
+
+export async function getUsersActivity() {
+  return apiFetch<
+    Array<{
+      id: string;
+      name: string;
+      email: string;
+      role: string;
+      status: string;
+      linesAnnotated: number;
+      linesVerified: number;
+      lastActive: string;
+    }>
+  >(`${API_BASE_URL}/dashboard/users/activity`, {
+    method: "GET",
+  });
+}
