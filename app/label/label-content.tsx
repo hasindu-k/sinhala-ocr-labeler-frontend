@@ -36,6 +36,8 @@ import {
   ZoomOut,
   CropIcon,
   Loader2,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import {
   Select,
@@ -86,9 +88,46 @@ export function LabelContent() {
   const [isTransliterationEnabled, setIsTransliterationEnabled] =
     useState(true);
 
+  // Ref for auto-scrolling
+  const labelingTopRef = useRef<HTMLDivElement>(null);
+
+  const [isHeaderExpanded, setIsHeaderExpanded] = useState(true);
+
   const initializedFromUrl = useRef(false);
 
   const currentLine = lines[currentLineIndex];
+
+  // --- AUTO SCROLL EFFECT ---
+  useEffect(() => {
+    if (labelingTopRef.current && lines.length > 0 && currentLine) {
+      // Wait for image to load or timeout after 500ms, whichever comes first
+      const performScroll = () => {
+        labelingTopRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      };
+
+      // Find the image element and wait for it to load
+      const imageElement = labelingTopRef.current?.querySelector("img");
+
+      if (imageElement && !imageElement.complete) {
+        // Image is still loading, wait for it
+        imageElement.addEventListener("load", performScroll, { once: true });
+        // Fallback timeout in case image load event doesn't fire
+        const timer = setTimeout(performScroll, 500);
+        return () => {
+          clearTimeout(timer);
+          imageElement.removeEventListener("load", performScroll);
+        };
+      } else {
+        // Image is already loaded or no image, scroll immediately but with a small delay
+        const timer = setTimeout(performScroll, 150);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [currentLineIndex, lines.length, currentLine]);
+  // --------------------------
 
   useEffect(() => {
     // Reset zoom when line changes
@@ -459,7 +498,6 @@ export function LabelContent() {
     formData.append("page_id", currentLine.page_id);
 
     // Call your backend API to overwrite the image
-    // This function needs to be created in your API layer
     const updatedLine = await updateLineImage(currentLine.id, formData);
 
     // Update local state to show new image immediately
@@ -552,6 +590,12 @@ export function LabelContent() {
                 <span className="flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
                   <Ban className="h-3 w-3" /> Invalid
                 </span>
+              )}
+              {currentLine.verified && (
+                <Badge className="gap-1 bg-green-500/10 text-green-700 hover:bg-green-500/20 dark:text-green-400">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Verified
+                </Badge>
               )}
             </div>
 
@@ -899,41 +943,69 @@ export function LabelContent() {
             </Alert>
           )}
 
-          {/* Document Selection */}
+          {/* Document Selection - COLLAPSIBLE */}
           <Card>
-            <CardHeader>
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <CardTitle>Select Document</CardTitle>
+            <CardHeader className="pb-0">
+              {/* Top Row: Always visible, aligns items in a single line */}
+              <div className="flex items-center justify-between gap-4">
+                {/* Left Side: Title, Toggle, and Compact Progress */}
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <div className="flex items-center gap-2 shrink-0">
+                    <CardTitle className="whitespace-nowrap">
+                      Select Document
+                    </CardTitle>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-6 gap-1 px-2 text-xs text-muted-foreground hover:text-primary"
-                      onClick={jumpToNextUnverified}
-                      disabled={lines.length === 0}
-                      title="Jump to next unverified line"
+                      className="h-6 w-6 p-0 hover:bg-muted text-muted-foreground"
+                      onClick={() => setIsHeaderExpanded(!isHeaderExpanded)}
                     >
-                      <ListTodo className="h-3.5 w-3.5" />
-                      Next Unverified
+                      {isHeaderExpanded ? (
+                        <ChevronUp className="h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4" />
+                      )}
+                      <span className="sr-only">Toggle header</span>
                     </Button>
                   </div>
-                  <CardDescription>
-                    Choose a document to start labeling
-                  </CardDescription>
+
+                  {/* Vertical Divider & Progress - Only visible when collapsed */}
+                  {!isHeaderExpanded && lines.length > 0 && (
+                    <>
+                      <div className="h-4 w-px bg-border shrink-0 hidden sm:block" />
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground truncate">
+                        <span className="hidden sm:inline whitespace-nowrap">
+                          Progress: {progress}%
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            jumpToNextUnverified();
+                          }}
+                          title="Jump to next unverified"
+                        >
+                          <ListTodo className="h-3.5 w-3.5 text-primary" />
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 </div>
-                <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+
+                {/* Right Side: Select Dropdown & Extract Button */}
+                <div className="flex items-center gap-2 shrink-0">
                   <Select
                     value={selectedDocument}
                     onValueChange={setSelectedDocument}
                     disabled={documents.length === 0 || isLoading}
                   >
-                    <SelectTrigger className="w-full md:w-80">
-                      <span className="flex-1 truncate text-left">
+                    <SelectTrigger className="w-[180px] sm:w-[250px] md:w-[300px]">
+                      <span className="truncate text-left">
                         <SelectValue placeholder="Select a document" />
                       </span>
                     </SelectTrigger>
-
                     <SelectContent className="max-h-72">
                       {documents.length === 0 ? (
                         <SelectItem value="no-docs" disabled>
@@ -942,7 +1014,7 @@ export function LabelContent() {
                       ) : (
                         documents.map((doc) => (
                           <SelectItem key={doc.id} value={doc.id}>
-                            <span className="block truncate max-w-[80vw] md:max-w-72">
+                            <span className="block truncate max-w-[200px]">
                               {doc.original_filename || "Untitled"}
                             </span>
                           </SelectItem>
@@ -951,91 +1023,163 @@ export function LabelContent() {
                     </SelectContent>
                   </Select>
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="whitespace-nowrap"
-                    disabled={
-                      !selectedDocument || isLoadingLines || isExtractingText
-                    }
-                    onClick={handleExtractText}
-                  >
-                    {isExtractingText ? "Extracting..." : "Extract Text"}
-                  </Button>
+                  {/* Extract Button - Hidden when collapsed to keep single line clean */}
+                  {isHeaderExpanded && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="hidden sm:flex"
+                      disabled={
+                        !selectedDocument || isLoadingLines || isExtractingText
+                      }
+                      onClick={handleExtractText}
+                    >
+                      {isExtractingText ? "..." : "Extract"}
+                    </Button>
+                  )}
                 </div>
               </div>
+
+              {/* Description Row: Only visible when expanded */}
+              {isHeaderExpanded && (
+                <CardDescription className="mt-1">
+                  Choose a document to start labeling
+                </CardDescription>
+              )}
             </CardHeader>
-            {selectedDocument && (
+
+            {/* Collapsible Content (Progress Bar) */}
+            {isHeaderExpanded && selectedDocument && (
               <CardContent>{renderProgressContent()}</CardContent>
             )}
-            <div className="flex items-center justify-between px-4">
+
+            {/* Collapsible Footer (Nav buttons inside top card) */}
+            {isHeaderExpanded && (
+              <div className="flex items-center justify-between px-4 pb-4">
+                <Button
+                  onClick={goToPreviousLine}
+                  disabled={currentLineIndex === 0 || lines.length === 0}
+                  variant="outline"
+                  className="gap-2 bg-transparent"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  <span className="hidden sm:inline">Previous Line</span>
+                </Button>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">
+                    {lines.length === 0
+                      ? "0 of 0"
+                      : `${currentLineIndex + 1} of ${lines.length}`}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 gap-1 px-2 text-xs text-muted-foreground hover:text-primary"
+                    onClick={jumpToNextUnverified}
+                    disabled={lines.length === 0}
+                    title="Jump to next unverified line"
+                  >
+                    <ListTodo className="h-3.5 w-3.5" />
+                    Next Unverified
+                  </Button>
+                </div>
+
+                <Button
+                  onClick={goToNextLine}
+                  disabled={
+                    lines.length === 0 || currentLineIndex === lines.length - 1
+                  }
+                  variant="outline"
+                  className="gap-2 bg-transparent"
+                >
+                  <span className="hidden sm:inline">Next Line</span>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </Card>
+
+          {/* Line Labeling Interface - WRAPPED FOR SIDE NAVIGATION */}
+          <div className="relative group scroll-mt-24" ref={labelingTopRef}>
+            {/* Desktop Side Navigation: PREVIOUS */}
+            <div className="hidden md:block absolute -left-16 top-1/2 -translate-y-1/2 z-10">
               <Button
+                variant="secondary"
+                size="icon"
+                className="h-12 w-12 rounded-full shadow-lg opacity-50 hover:opacity-100 transition-opacity border"
                 onClick={goToPreviousLine}
                 disabled={currentLineIndex === 0 || lines.length === 0}
-                variant="outline"
-                className="gap-2 bg-transparent"
+                title="Previous Line"
               >
-                <ChevronLeft className="h-4 w-4" />
-                <span className="hidden sm:inline">Previous Line</span>
+                <ChevronLeft className="h-6 w-6" />
               </Button>
+            </div>
 
-              <span className="text-sm text-muted-foreground whitespace-nowrap">
-                {lines.length === 0
-                  ? "0 of 0"
-                  : `${currentLineIndex + 1} of ${lines.length}`}
-              </span>
-
+            {/* Desktop Side Navigation: NEXT */}
+            <div className="hidden md:block absolute -right-16 top-1/2 -translate-y-1/2 z-10">
               <Button
+                variant="secondary"
+                size="icon"
+                className="h-12 w-12 rounded-full shadow-lg opacity-50 hover:opacity-100 transition-opacity border"
                 onClick={goToNextLine}
                 disabled={
                   lines.length === 0 || currentLineIndex === lines.length - 1
                 }
-                variant="outline"
-                className="gap-2 bg-transparent"
+                title="Next Line"
               >
-                <span className="hidden sm:inline">Next Line</span>
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-6 w-6" />
               </Button>
             </div>
-          </Card>
 
-          {/* Line Labeling Interface */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <CardTitle>
-                      {currentLine
-                        ? `Line ${currentLineIndex + 1} of ${
-                            lines.length
-                          } • Page ${currentLine.page_number}`
-                        : "No line selected"}
-                    </CardTitle>
-                    {currentLine &&
-                      (currentLine.verified ? (
-                        <Badge className="gap-1 bg-green-500/10 text-green-700 hover:bg-green-500/20 dark:text-green-400">
-                          <CheckCircle2 className="h-3 w-3" />
-                          Verified
-                        </Badge>
-                      ) : (
-                        <Badge className="gap-1" variant="secondary">
-                          <AlertCircle className="h-3 w-3" />
-                          Unverified
-                        </Badge>
-                      ))}
+            <Card className="z-0">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <CardTitle>
+                        {currentLine
+                          ? `Line ${currentLineIndex + 1} of ${
+                              lines.length
+                            } • Page ${currentLine.page_number}`
+                          : "No line selected"}
+                      </CardTitle>
+                      {currentLine &&
+                        (currentLine.verified ? (
+                          <Badge className="gap-1 bg-green-500/10 text-green-700 hover:bg-green-500/20 dark:text-green-400">
+                            <CheckCircle2 className="h-3 w-3" />
+                            Verified
+                          </Badge>
+                        ) : (
+                          <Badge className="gap-1" variant="secondary">
+                            <AlertCircle className="h-3 w-3" />
+                            Unverified
+                          </Badge>
+                        ))}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 gap-1 px-2 text-xs text-muted-foreground hover:text-primary"
+                        onClick={jumpToNextUnverified}
+                        disabled={lines.length === 0}
+                        title="Jump to next unverified line"
+                      >
+                        <ListTodo className="h-3.5 w-3.5" />
+                        Next Unverified
+                      </Button>
+                    </div>
+                    <CardDescription>
+                      {selectedDoc?.original_filename || "Select a document"}
+                    </CardDescription>
                   </div>
-                  <CardDescription>
-                    {selectedDoc?.original_filename || "Select a document"}
-                  </CardDescription>
+                  <FileText className="h-5 w-5 text-muted-foreground" />
                 </div>
-                <FileText className="h-5 w-5 text-muted-foreground" />
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {renderLineContent()}
-            </CardContent>
-          </Card>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {renderLineContent()}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </main>
 
