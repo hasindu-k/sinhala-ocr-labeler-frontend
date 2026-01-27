@@ -36,7 +36,7 @@ interface AuthContextType {
     name: string,
     email: string,
     password: string,
-    role: string
+    role: string,
   ) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
@@ -109,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Redirect logic
   useEffect(() => {
     if (!isLoading) {
-      const publicPaths = ["/", "/login", "/signup"];
+      const publicPaths = ["/", "/login", "/signup", "/handwriting"];
       const isPublicPath = publicPaths.includes(pathname);
 
       if (!user && !isPublicPath) {
@@ -147,7 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     name: string,
     email: string,
     password: string,
-    role: string
+    role: string,
   ) => {
     const data = await apiSignup({ name, email, password, role });
     const authUser: User = {

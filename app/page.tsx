@@ -12,14 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Upload,
-  FileText,
-  CheckCircle2,
-  Database,
-  ArrowRight,
-  Loader2,
-} from "lucide-react";
+import { Upload, FileText, ArrowRight, Loader2, PenTool } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function HomePage() {
@@ -43,13 +36,8 @@ export default function HomePage() {
     );
   }
 
-  if (user) {
-    return null; // Will redirect to /documents
-  }
-
   return (
     <div className="min-h-screen bg-background">
-      {/* Simple Header for Landing */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-2">
@@ -60,12 +48,16 @@ export default function HomePage() {
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <Link href="/login">
-              <Button variant="ghost">Sign In</Button>
-            </Link>
-            <Link href="/signup">
-              <Button>Get Started</Button>
-            </Link>
+            {!user && (
+              <>
+                <Link href="/login">
+                  <Button variant="ghost">Sign In</Button>
+                </Link>
+                <Link href="/signup">
+                  <Button>Get Started</Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -75,141 +67,70 @@ export default function HomePage() {
           {/* Hero Section */}
           <div className="space-y-4 text-center">
             <h1 className="text-4xl font-bold tracking-tight text-balance lg:text-5xl">
-              Professional Document Annotation Platform
+              Sinhala Handwriting & Document Labeling
             </h1>
             <p className="mx-auto max-w-2xl text-lg text-muted-foreground text-pretty">
-              Transform PDFs into high-quality training data. Extract, label,
-              and verify text lines with powerful collaboration tools designed
-              for annotation teams.
+              A dual-purpose platform to collect authentic Sinhala handwriting
+              samples and transform PDFs into high-quality OCR training data.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-3 pt-4">
-              <Link href="/signup">
-                <Button size="lg" className="gap-2">
-                  <Upload className="h-4 w-4" />
-                  Get Started Free
-                </Button>
-              </Link>
-              <Link href="/login">
+              <Link href="/handwriting">
                 <Button
                   size="lg"
-                  variant="outline"
-                  className="gap-2 bg-transparent"
+                  variant="default"
+                  className="gap-2 bg-orange-600 hover:bg-orange-700"
                 >
-                  Sign In
-                  <ArrowRight className="h-4 w-4" />
+                  <PenTool className="h-4 w-4" />
+                  Contribute Handwriting
+                </Button>
+              </Link>
+              <Link href="/signup">
+                <Button size="lg" variant="outline" className="gap-2">
+                  <Upload className="h-4 w-4" />
+                  Annotate Documents
                 </Button>
               </Link>
             </div>
           </div>
 
-          {/* Features Grid */}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
+          {/* Feature Highlight */}
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card className="border-2 border-primary/20">
               <CardHeader>
-                <div className="flex items-center gap-3">
-                  <Upload className="h-8 w-8 text-primary mb-2" />
-                  <CardTitle>Upload PDFs</CardTitle>
-                </div>
+                <PenTool className="h-10 w-10 text-orange-600 mb-2" />
+                <CardTitle>Handwriting Collection</CardTitle>
                 <CardDescription>
-                  Drag and drop PDF documents for automatic processing
+                  Help us build the largest Sinhala handwriting dataset. Follow
+                  prompts and upload photos of your writing.
                 </CardDescription>
               </CardHeader>
+              <CardContent>
+                <Link href="/handwriting">
+                  <Button variant="link" className="px-0 text-orange-600">
+                    Start writing now <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <div className="flex items-center gap-3">
-                  <FileText className="h-8 w-8 text-primary mb-2" />
-                  <CardTitle>Extract Lines</CardTitle>
-                </div>
+                <FileText className="h-10 w-10 text-primary mb-2" />
+                <CardTitle>Document Annotation</CardTitle>
                 <CardDescription>
-                  Automatic line detection and text extraction from pages
+                  Professional tools for teams to label, verify, and export OCR
+                  datasets from PDF documents.
                 </CardDescription>
               </CardHeader>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 className="h-8 w-8 text-primary mb-2" />
-                  <CardTitle>Verify & Correct</CardTitle>
-                </div>
-                <CardDescription>
-                  Human-in-the-loop verification with annotation tracking
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <Database className="h-8 w-8 text-primary mb-2" />
-                  <CardTitle>Export Datasets</CardTitle>
-                </div>
-                <CardDescription>
-                  Download verified training data in standard formats
-                </CardDescription>
-              </CardHeader>
+              <CardContent>
+                <Link href="/signup">
+                  <Button variant="link" className="px-0">
+                    Create team account <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              </CardContent>
             </Card>
           </div>
-
-          {/* Workflow Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle>How It Works</CardTitle>
-              <CardDescription>
-                Simple workflow for creating high-quality training data
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-6 md:grid-cols-4">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
-                      1
-                    </div>
-                    <h3 className="font-semibold">Upload</h3>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Upload PDF documents to start the processing pipeline
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
-                      2
-                    </div>
-                    <h3 className="font-semibold">Process</h3>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Automatic conversion to images and line extraction
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
-                      3
-                    </div>
-                    <h3 className="font-semibold">Label</h3>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Annotate and correct extracted text line by line
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
-                      4
-                    </div>
-                    <h3 className="font-semibold">Export</h3>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Download verified datasets for model training
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </main>
     </div>

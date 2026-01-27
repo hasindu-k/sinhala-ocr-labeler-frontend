@@ -12,6 +12,7 @@ import {
   Database,
   Menu,
   LogOut,
+  PenTool,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
@@ -32,6 +33,7 @@ import {
 
 const navigation = [
   { name: "Documents", href: "/documents", icon: FileText },
+  { name: "Handwriting", href: "/handwriting", icon: PenTool },
   { name: "Upload", href: "/upload", icon: Upload },
   { name: "Label", href: "/label", icon: FileText },
   { name: "Verify", href: "/verify", icon: CheckCircle2 },
