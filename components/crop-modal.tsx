@@ -7,6 +7,7 @@ import ReactCrop, {
   makeAspectCrop,
 } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
+
 import {
   Dialog,
   DialogContent,
@@ -24,7 +25,7 @@ interface CropModalProps {
   imageUrl: string;
   onSave: (newImage: Blob) => Promise<void>;
   isDefaultCropNeeded?: boolean;
-  onDone?: () => void; // Finish cropping this raw image
+  onDone?: () => void;
 }
 
 export function CropModal({
@@ -36,52 +37,36 @@ export function CropModal({
   onDone,
 }: Readonly<CropModalProps>) {
   const [crop, setCrop] = useState<Crop>();
+  const [enableCrop, setEnableCrop] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
   const imgRef = useRef<HTMLImageElement>(null);
 
+  /* ---------------- Image Load ---------------- */
   function onImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
-    const { width, height } = e.currentTarget;
-    if (!isDefaultCropNeeded) return;
+    if (!enableCrop || !isDefaultCropNeeded) return;
 
-    // Default crop: Center 90% of the image
+    const { width, height } = e.currentTarget;
     const initialCrop = centerCrop(
       makeAspectCrop({ unit: "%", width: 90 }, width / height, width, height),
       width,
-      height
+      height,
     );
     setCrop(initialCrop);
   }
 
+  /* ---------------- Preview (crop only) ---------------- */
   const handleGeneratePreview = async () => {
-    if (imgRef.current && crop) {
-      setIsSaving(true);
-      try {
-        const croppedBlob = await getCroppedImg(
-          imgRef.current,
-          crop,
-          "cropped.png"
-        );
-        const url = URL.createObjectURL(croppedBlob);
-        setPreviewBlob(croppedBlob);
-        setPreviewUrl(url);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setIsSaving(false);
-      }
-    }
-  };
+    if (!imgRef.current || !crop) return;
 
-  // Save current crop and allow more crops
-  const handleSaveAndAddAnother = async () => {
-    if (!previewBlob) return;
     setIsSaving(true);
     try {
-      await onSave(previewBlob);
-      handleDiscardPreview();
-      setCrop(undefined); // reset crop for next
+      const blob = await getCroppedImg(imgRef.current, crop, "cropped.png");
+      const url = URL.createObjectURL(blob);
+      setPreviewBlob(blob);
+      setPreviewUrl(url);
     } catch (e) {
       console.error(e);
     } finally {
@@ -89,13 +74,14 @@ export function CropModal({
     }
   };
 
-  const handleConfirmSaveAndDone = async () => {
-    if (!previewBlob) return;
+  /* ---------------- Direct Save (no crop) ---------------- */
+  const handleSaveWithoutCrop = async () => {
     setIsSaving(true);
     try {
-      await onSave(previewBlob);
-      handleDiscardPreview();
-      onDone?.(); // move to next raw image
+      const res = await fetch(corsImageUrl);
+      const blob = await res.blob();
+      await onSave(blob);
+      onDone?.();
     } catch (e) {
       console.error(e);
     } finally {
@@ -103,16 +89,34 @@ export function CropModal({
     }
   };
 
-  const handleDiscardPreview = () => {
+  /* ---------------- Save from Preview ---------------- */
+  const handleSaveFromPreview = async () => {
+    if (!previewBlob) return;
+
+    setIsSaving(true);
+    try {
+      await onSave(previewBlob);
+      cleanupPreview();
+      onDone?.();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const cleanupPreview = () => {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewBlob(null);
     setPreviewUrl(null);
   };
 
+  /* ---------------- Image URL ---------------- */
   const corsImageUrl = useMemo(() => {
     if (!imageUrl) return "";
     if (imageUrl.startsWith("blob:") || imageUrl.startsWith("data:"))
       return imageUrl;
+
     try {
       const base = globalThis?.location?.origin;
       const u = new URL(imageUrl, base);
@@ -123,19 +127,22 @@ export function CropModal({
     }
   }, [imageUrl]);
 
+  /* ======================= UI ======================= */
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl">
         {previewUrl ? (
+          /* ---------- PREVIEW (crop only) ---------- */
           <>
             <DialogHeader>
               <DialogTitle>Preview Cropped Image</DialogTitle>
             </DialogHeader>
 
-            <div className="flex justify-center bg-muted/20 p-4 rounded-md overflow-auto max-h-[80vh]">
+            <div className="flex justify-center bg-muted/20 p-4 rounded-md max-h-[80vh] overflow-auto">
               <img
                 src={previewUrl}
-                alt="Cropped preview"
+                alt="Preview"
                 className="max-w-full max-h-full"
               />
             </div>
@@ -143,77 +150,89 @@ export function CropModal({
             <DialogFooter className="gap-2">
               <Button
                 variant="outline"
-                onClick={handleDiscardPreview}
+                onClick={cleanupPreview}
                 disabled={isSaving}
-                className="gap-2"
               >
-                <X className="h-4 w-4" /> Discard & Redo
+                <X className="h-4 w-4 mr-2" />
+                Redo
               </Button>
-              <Button
-                onClick={handleSaveAndAddAnother}
-                disabled={isSaving}
-                className="gap-2"
-              >
-                {isSaving ? (
-                  "Saving..."
-                ) : (
-                  <>
-                    <Check className="h-4 w-4" /> Save & Add Another
-                  </>
-                )}
-              </Button>
-              <Button
-                onClick={handleConfirmSaveAndDone}
-                disabled={isSaving}
-                className="gap-2"
-              >
-                {isSaving ? (
-                  "Saving..."
-                ) : (
-                  <>
-                    <Check className="h-4 w-4" /> Save & Finish
-                  </>
-                )}
+
+              <Button onClick={handleSaveFromPreview} disabled={isSaving}>
+                <Check className="h-4 w-4 mr-2" />
+                Save
               </Button>
             </DialogFooter>
           </>
         ) : (
+          /* ---------- MAIN VIEW ---------- */
           <>
             <DialogHeader>
-              <DialogTitle>Adjust Crop</DialogTitle>
+              <DialogTitle>
+                {enableCrop ? "Adjust Crop" : "Confirm Image"}
+              </DialogTitle>
             </DialogHeader>
 
-            <div className="flex justify-center bg-muted/20 p-4 rounded-md overflow-auto max-h-[80vh]">
-              <ReactCrop crop={crop} onChange={setCrop}>
+            {/* Crop toggle */}
+            <div className="flex items-center gap-2 mb-2">
+              <input
+                type="checkbox"
+                id="enableCrop"
+                checked={enableCrop}
+                onChange={(e) => setEnableCrop(e.target.checked)}
+              />
+              <label htmlFor="enableCrop" className="text-sm">
+                Enable cropping
+              </label>
+            </div>
+
+            <div className="flex justify-center bg-muted/20 p-4 rounded-md max-h-[80vh] overflow-auto">
+              {enableCrop ? (
+                <ReactCrop crop={crop} onChange={setCrop}>
+                  <img
+                    ref={imgRef}
+                    src={corsImageUrl}
+                    crossOrigin={
+                      imageUrl.startsWith("blob:") ||
+                      imageUrl.startsWith("data:")
+                        ? undefined
+                        : "anonymous"
+                    }
+                    onLoad={onImageLoad}
+                    alt="Crop"
+                    className="max-w-full"
+                  />
+                </ReactCrop>
+              ) : (
                 <img
                   ref={imgRef}
                   src={corsImageUrl}
-                  crossOrigin={
-                    imageUrl.startsWith("blob:") || imageUrl.startsWith("data:")
-                      ? undefined
-                      : "anonymous"
-                  }
-                  onLoad={onImageLoad}
-                  alt="Crop me"
+                  alt="Original"
                   className="max-w-full"
                 />
-              </ReactCrop>
+              )}
             </div>
 
             <DialogFooter>
               <Button variant="outline" onClick={onClose}>
                 Cancel
               </Button>
+
               <Button
-                onClick={handleGeneratePreview}
+                onClick={() =>
+                  enableCrop ? handleGeneratePreview() : handleSaveWithoutCrop()
+                }
                 disabled={isSaving}
                 className="gap-2"
               >
-                {isSaving ? (
-                  "Generating..."
+                {enableCrop ? (
+                  <>
+                    <CropIcon className="h-4 w-4" />
+                    Preview Crop
+                  </>
                 ) : (
                   <>
-                    <CropIcon className="h-4 w-4" /> Preview Crop
+                    <Check className="h-4 w-4" />
+                    Save Image
                   </>
                 )}
               </Button>

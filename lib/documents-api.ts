@@ -15,6 +15,26 @@ export async function uploadDocuments(files: File[]) {
   });
 }
 
+export async function uploadImagesAsBulkDocument(
+  files: File[],
+  documentName?: string,
+) {
+  const formData = new FormData();
+
+  files.forEach((file) => {
+    formData.append("files", file);
+  });
+
+  if (documentName) {
+    formData.append("document_name", documentName);
+  }
+
+  return apiFetch<DocumentResponse>(`${API_BASE_URL}/documents/upload/bulk`, {
+    method: "POST",
+    body: formData,
+  });
+}
+
 export async function listDocuments() {
   return apiFetch<DocumentResponse[]>(`${API_BASE_URL}/documents/`, {
     method: "GET",
@@ -26,7 +46,7 @@ export async function deleteDocument(documentId: string) {
     `${API_BASE_URL}/documents/${documentId}`,
     {
       method: "DELETE",
-    }
+    },
   );
 }
 
@@ -35,7 +55,7 @@ export async function convertDocumentPages(documentId: string) {
     `${API_BASE_URL}/documents/${documentId}/convert-pages`,
     {
       method: "POST",
-    }
+    },
   );
 }
 
@@ -44,7 +64,7 @@ export async function extractLinesFromPage(documentId: string, pageId: string) {
     `${API_BASE_URL}/documents/${documentId}/pages/${pageId}/extract-lines`,
     {
       method: "POST",
-    }
+    },
   );
 }
 
@@ -62,13 +82,13 @@ export async function extractTextForDocument(documentId: string) {
     `${API_BASE_URL}/documents/${documentId}/extract-text`,
     {
       method: "POST",
-    }
+    },
   );
 }
 
 export async function listDocumentLines(
   documentId: string,
-  params?: { verified?: boolean; page_num?: number; assigned_to?: string }
+  params?: { verified?: boolean; page_num?: number; assigned_to?: string },
 ) {
   const search = new URLSearchParams();
   if (params?.verified !== undefined)
@@ -84,7 +104,7 @@ export async function listDocumentLines(
     `${API_BASE_URL}/documents/${documentId}/lines${suffix}`,
     {
       method: "GET",
-    }
+    },
   );
 }
 
@@ -96,7 +116,7 @@ export async function getLine(lineId: string) {
 
 export async function deleteLine(
   lineId: string,
-  options: { hard?: boolean } = {}
+  options: { hard?: boolean } = {},
 ) {
   const suffix = options.hard ? "?hard=true" : "";
 
@@ -110,7 +130,7 @@ export async function invalidateLine(lineId: string) {
     `${API_BASE_URL}/api/lines/${lineId}/invalidate`,
     {
       method: "PUT",
-    }
+    },
   );
 }
 
@@ -119,7 +139,7 @@ export async function restoreLine(lineId: string) {
     `${API_BASE_URL}/api/lines/${lineId}/restore`,
     {
       method: "PUT",
-    }
+    },
   );
 }
 
@@ -137,7 +157,7 @@ export async function extractTextFromLine(lineImageId: string) {
 
 export async function saveCorrectedText(
   lineImageId: string,
-  correctedText: string
+  correctedText: string,
 ) {
   return apiFetch<{
     status: string;
@@ -184,7 +204,7 @@ export async function downloadFinalizedDataset(datasetName: string) {
     {
       method: "GET",
       headers: token ? { Authorization: `Bearer ${token}` } : {},
-    }
+    },
   );
 
   if (!response.ok) {
@@ -199,7 +219,7 @@ export async function createFinalizedDataset(documentId: string) {
     `${API_BASE_URL}/documents/${documentId}/create-finalized`,
     {
       method: "POST",
-    }
+    },
   );
 }
 

@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 import { Upload, FileText, CheckCircle2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { uploadDocuments } from "@/lib/documents-api";
@@ -18,11 +19,24 @@ import { showToast } from "@/lib/toast";
 import { useRouter } from "next/navigation";
 import { CropModal } from "@/components/crop-modal";
 
+interface UploadedFile {
+  name: string;
+  isBulk: boolean;
+  uploadSessionId: string;
+}
+
+function renameToPng(name: string) {
+  const idx = name.lastIndexOf(".");
+  return idx > 0 ? `${name.substring(0, idx)}.png` : `${name}.png`;
+}
+
 export default function UploadPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [uploadSessionId, setUploadSessionId] = useState<string>("");
+  const [isBulkUpload, setIsBulkUpload] = useState(false);
   const router = useRouter();
 
   // Image cropping flow
@@ -63,7 +77,7 @@ export default function UploadPage() {
     if (isUploading) return;
 
     const pdfFiles = files.filter(
-      (file) => file.type === "application/pdf" || file.name.endsWith(".pdf")
+      (file) => file.type === "application/pdf" || file.name.endsWith(".pdf"),
     );
     const imageFiles = files.filter((file) => file.type.startsWith("image/"));
 
@@ -75,6 +89,12 @@ export default function UploadPage() {
       return;
     }
 
+    // Generate session ID and check if bulk upload
+    const sessionId = `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+    const isBulk = imageFiles.length > 1;
+
+    setUploadSessionId(sessionId);
+    setIsBulkUpload(isBulk);
     setIsUploading(true);
     setUploadProgress(0);
     setProcessedCount(0);
@@ -88,7 +108,11 @@ export default function UploadPage() {
           docs.forEach((doc, index) => {
             setUploadedFiles((current) => [
               ...current,
-              doc.original_filename || pdfFiles[index].name,
+              {
+                name: doc.original_filename || pdfFiles[index].name,
+                isBulk: pdfFiles.length > 1,
+                uploadSessionId: sessionId,
+              },
             ]);
           });
           showToast({
@@ -148,14 +172,18 @@ export default function UploadPage() {
       const croppedFile = new File(
         [newImage],
         renameToPng(currentImageFile.name),
-        { type: "image/png" }
+        { type: "image/png" },
       );
 
       const [doc] = await uploadDocuments([croppedFile]);
 
       setUploadedFiles((current) => [
         ...current,
-        doc.original_filename || croppedFile.name,
+        {
+          name: doc.original_filename || croppedFile.name,
+          isBulk: isBulkUpload,
+          uploadSessionId: uploadSessionId,
+        },
       ]);
 
       showToast({
@@ -192,11 +220,6 @@ export default function UploadPage() {
     handleCropDone();
   };
 
-  function renameToPng(name: string) {
-    const idx = name.lastIndexOf(".");
-    return idx > 0 ? `${name.substring(0, idx)}.png` : `${name}.png`;
-  }
-
   const finalizeUpload = () => {
     setTimeout(() => router.push("/documents"), 1000);
     setIsUploading(false);
@@ -206,6 +229,8 @@ export default function UploadPage() {
     setIsCropOpen(false);
     setProcessedCount(0);
     setTotalCount(0);
+    setIsBulkUpload(false);
+    setUploadSessionId("");
   };
 
   return (
@@ -214,11 +239,20 @@ export default function UploadPage() {
 
       <main className="container py-8">
         <div className="mx-auto max-w-4xl space-y-8">
-          <div>
-            <h1 className="text-3xl font-bold">Upload Documents</h1>
-            <p className="text-muted-foreground">
-              Upload PDFs and crop images (multiple crops per image)
-            </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">Upload Documents</h1>
+              <p className="text-muted-foreground">
+                Upload PDFs and crop images (multiple crops per image)
+              </p>
+            </div>
+            <Button
+              onClick={() => router.push("/upload/bulk")}
+              variant="outline"
+              className="whitespace-nowrap"
+            >
+              Bulk Upload Images →
+            </Button>
           </div>
 
           <Card>
@@ -237,7 +271,7 @@ export default function UploadPage() {
                   "flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 transition-colors",
                   isDragging ? "border-primary bg-primary/5" : "border-border",
                   !isUploading &&
-                    "cursor-pointer hover:border-primary hover:bg-accent"
+                    "cursor-pointer hover:border-primary hover:bg-accent",
                 )}
               >
                 <input
@@ -290,15 +324,20 @@ export default function UploadPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {uploadedFiles.map((fileName, index) => (
+                  {uploadedFiles.map((file) => (
                     <div
-                      key={index}
+                      key={`${file.uploadSessionId}-${file.name}`}
                       className="flex items-center gap-3 p-3 rounded-lg border bg-card"
                     >
                       <FileText className="h-5 w-5 text-primary" />
-                      <span className="flex-1 text-sm font-medium">
-                        {fileName}
-                      </span>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{file.name}</p>
+                        {file.isBulk && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            → Bulk Upload
+                          </p>
+                        )}
+                      </div>
                       <CheckCircle2 className="h-5 w-5 text-green-600" />
                     </div>
                   ))}
