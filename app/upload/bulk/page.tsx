@@ -19,6 +19,8 @@ import {
   ImageIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { uploadImagesAsBulkDocument } from "@/lib/documents-api";
 import { showToast } from "@/lib/toast";
@@ -40,9 +42,12 @@ export default function BulkUploadPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [documentName, setDocumentName] = useState("");
+  const [uploadMode, setUploadMode] = useState<"preview" | "no-preview">(
+    "preview",
+  );
   const [uploadSessionId, setUploadSessionId] = useState<string>("");
   const [totalFilesToUpload, setTotalFilesToUpload] = useState(0);
-  const [croppedImageFiles, setCroppedImageFiles] = useState<File[]>([]);
   const router = useRouter();
 
   // Image cropping flow
@@ -80,6 +85,15 @@ export default function BulkUploadPage() {
   const handleFiles = async (files: File[]) => {
     if (isUploading) return;
 
+    const trimmedDocumentName = documentName.trim();
+    if (!trimmedDocumentName) {
+      showToast({
+        message: "Please enter a document name before uploading",
+        variant: "error",
+      });
+      return;
+    }
+
     const imageFiles = files.filter((file) => file.type.startsWith("image/"));
 
     if (imageFiles.length === 0) {
@@ -94,6 +108,15 @@ export default function BulkUploadPage() {
     const sessionId = `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 
     setUploadSessionId(sessionId);
+
+    if (uploadMode === "no-preview") {
+      setIsUploading(true);
+      setUploadProgress(0);
+      setTotalFilesToUpload(imageFiles.length);
+      await finalizeUpload(imageFiles, sessionId);
+      return;
+    }
+
     setIsUploading(true);
     setUploadProgress(0);
     setProcessedCount(0);
@@ -138,7 +161,6 @@ export default function BulkUploadPage() {
 
       let nextCount = 0;
       croppedFilesRef.current.push(croppedFile);
-      setCroppedImageFiles([...croppedFilesRef.current]);
       nextCount = croppedFilesRef.current.length;
 
       setProcessedCount((prev) => {
@@ -197,8 +219,13 @@ export default function BulkUploadPage() {
     handleCropDone();
   };
 
-  const finalizeUpload = async (filesOverride?: File[]) => {
+  const finalizeUpload = async (
+    filesOverride?: File[],
+    sessionIdOverride?: string,
+  ) => {
     const filesToUpload = filesOverride ?? croppedFilesRef.current;
+    const effectiveSessionId = sessionIdOverride ?? uploadSessionId;
+    const trimmedDocumentName = documentName.trim();
 
     if (filesToUpload.length === 0) {
       showToast({
@@ -213,13 +240,13 @@ export default function BulkUploadPage() {
     try {
       const doc = await uploadImagesAsBulkDocument(
         filesToUpload,
-        `bulk_upload_${uploadSessionId}`,
+        trimmedDocumentName || `bulk_upload_${effectiveSessionId}`,
       );
 
       setUploadedFiles([
         {
           name: doc.original_filename || "Bulk Upload",
-          uploadSessionId: uploadSessionId,
+          uploadSessionId: effectiveSessionId,
         },
       ]);
 
@@ -245,11 +272,18 @@ export default function BulkUploadPage() {
       setIsCropOpen(false);
       setProcessedCount(0);
       setTotalFilesToUpload(0);
-      setCroppedImageFiles([]);
       setUploadSessionId("");
       setTimeout(() => router.push("/documents"), 1000);
     }
   };
+
+  let uploadStatusText = "Drop images here or click to select";
+  if (isUploading) {
+    uploadStatusText =
+      uploadMode === "preview"
+        ? `Uploading... (${processedCount}/${totalFilesToUpload})`
+        : "Uploading images...";
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -271,14 +305,38 @@ export default function BulkUploadPage() {
             <CardHeader>
               <CardTitle>Select Images</CardTitle>
               <CardDescription>
-                Drag & drop multiple images or click to browse
+                Choose upload mode, set a document name, then drag & drop images
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              <Tabs
+                value={uploadMode}
+                onValueChange={(value) =>
+                  setUploadMode(value as "preview" | "no-preview")
+                }
+              >
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="preview">Preview + Crop</TabsTrigger>
+                  <TabsTrigger value="no-preview">No Preview</TabsTrigger>
+                </TabsList>
+              </Tabs>
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Document name</p>
+                <Input
+                  value={documentName}
+                  onChange={(e) => setDocumentName(e.target.value)}
+                  placeholder="Enter a document name"
+                  disabled={isUploading}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {uploadMode === "preview"
+                    ? "Each image opens in crop preview before upload."
+                    : "Images upload directly without opening crop preview."}
+                </p>
+              </div>
+
               <div
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
                 className={cn(
                   "flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 transition-colors",
                   isDragging ? "border-primary bg-primary/5" : "border-border",
@@ -297,6 +355,9 @@ export default function BulkUploadPage() {
                 />
                 <label
                   htmlFor="file-upload"
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
                   className="flex flex-col items-center cursor-pointer w-full"
                 >
                   {isUploading ? (
@@ -304,15 +365,13 @@ export default function BulkUploadPage() {
                   ) : (
                     <Upload className="h-12 w-12 text-muted-foreground mb-4" />
                   )}
-                  <p className="text-lg font-medium mb-2">
-                    {isUploading
-                      ? `Uploading... (${processedCount}/${totalFilesToUpload})`
-                      : "Drop images here or click to select"}
-                  </p>
+                  <p className="text-lg font-medium mb-2">{uploadStatusText}</p>
                   <p className="text-sm text-muted-foreground text-center">
                     Support for JPG, PNG, GIF, WebP and other image formats.
                     <br />
-                    You can crop each image individually before upload.
+                    {uploadMode === "preview"
+                      ? "You can crop each image individually before upload."
+                      : "All selected images will upload directly as one document."}
                   </p>
                 </label>
 
