@@ -1,5 +1,6 @@
 export interface DocumentResponse {
   id: string;
+  name?: string;
   original_filename: string;
   stored_path: string;
   status: string;

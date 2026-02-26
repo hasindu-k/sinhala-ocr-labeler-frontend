@@ -41,6 +41,16 @@ export async function listDocuments() {
   });
 }
 
+export async function updateDocument(
+  documentId: string,
+  data: { name?: string; status?: string; total_pages?: number },
+) {
+  return apiFetch<DocumentResponse>(`${API_BASE_URL}/documents/${documentId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
 export async function deleteDocument(documentId: string) {
   return apiFetch<{ message: string }>(
     `${API_BASE_URL}/documents/${documentId}`,

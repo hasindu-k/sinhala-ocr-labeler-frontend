@@ -144,20 +144,27 @@ export function LabelContent() {
 
   const selectedDoc = useMemo(
     () => documents.find((d) => d.id === selectedDocument) || null,
-    [documents, selectedDocument]
+    [documents, selectedDocument],
   );
 
-  const allLinesVerified = useMemo(
-    () => lines.length > 0 && lines.every((line) => line.verified),
-    [lines]
-  );
+  const allLinesVerified = useMemo(() => {
+    if (lines.length === 0) return false;
+
+    // Only consider valid lines
+    const validLines = lines.filter((line) => !line.is_invalid);
+
+    // If there are no valid lines, don't allow dataset creation
+    if (validLines.length === 0) return false;
+
+    return validLines.every((line) => line.verified);
+  }, [lines]);
 
   const jumpToNextUnverified = () => {
     if (lines.length === 0) return;
 
     // 1. Search forward from current line
     let nextIndex = lines.findIndex(
-      (l, index) => index > currentLineIndex && !l.verified
+      (l, index) => index > currentLineIndex && !l.verified,
     );
 
     if (nextIndex === -1) {
@@ -220,7 +227,7 @@ export function LabelContent() {
         setCurrentLineIndex(safeIndex);
         const activeLine = data[safeIndex];
         setCorrectedText(
-          activeLine?.corrected_text || activeLine?.auto_text || ""
+          activeLine?.corrected_text || activeLine?.auto_text || "",
         );
         initializedFromUrl.current = true;
       } catch (error) {

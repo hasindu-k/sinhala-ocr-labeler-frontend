@@ -79,7 +79,7 @@ export default function DocumentList({
                     rel="noopener noreferrer"
                     className="font-semibold truncate text-sm sm:text-base hover:text-primary hover:underline cursor-pointer"
                   >
-                    {doc.original_filename || "Untitled"}
+                    {doc.name || doc.original_filename || "Untitled"}
                   </a>
                   {getStatusBadge(doc.status)}
                 </div>
@@ -105,7 +105,7 @@ export default function DocumentList({
                       <span className="font-medium">
                         {getVerificationProgress(
                           doc.lines_verified,
-                          doc.lines_extracted
+                          doc.lines_extracted,
                         )}
                         %
                       </span>
@@ -113,7 +113,7 @@ export default function DocumentList({
                     <Progress
                       value={getVerificationProgress(
                         doc.lines_verified,
-                        doc.lines_extracted
+                        doc.lines_extracted,
                       )}
                       className="h-1.5"
                     />
@@ -179,9 +179,14 @@ export default function DocumentList({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => onSelectDocument(doc)}>
+                    <Eye className="mr-2 h-4 w-4" />
+                    View Details
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <Link href={`/label?doc=${doc.id}`}>
                     <DropdownMenuItem>
-                      <Eye className="mr-2 h-4 w-4" />
+                      <FileText className="mr-2 h-4 w-4" />
                       View & Label
                     </DropdownMenuItem>
                   </Link>

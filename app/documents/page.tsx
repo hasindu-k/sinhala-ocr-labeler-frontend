@@ -22,6 +22,7 @@ import {
   deleteDocument,
   convertDocumentPages,
   extractLinesFromPages,
+  updateDocument,
 } from "@/lib/documents-api";
 import type { DocumentResponse } from "@/types/documents";
 import { showToast } from "@/lib/toast";
@@ -36,6 +37,8 @@ export default function DocumentsPage() {
   const [selectedDoc, setSelectedDoc] = useState<DocumentResponse | null>(null);
   const [isConverting, setIsConverting] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
+  const [editedDocumentName, setEditedDocumentName] = useState("");
+  const [isRenaming, setIsRenaming] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -64,6 +67,11 @@ export default function DocumentsPage() {
         error instanceof Error ? error.message : "Failed to delete document";
       showToast({ message, variant: "error" });
     }
+  };
+
+  const handleSelectDocument = (doc: DocumentResponse) => {
+    setSelectedDoc(doc);
+    setEditedDocumentName(doc.name || doc.original_filename || "");
   };
 
   const handleConvertPages = async (documentId: string) => {
@@ -119,12 +127,42 @@ export default function DocumentsPage() {
   const filteredDocuments = useMemo(
     () =>
       documents.filter((doc) =>
-        (doc.original_filename || "")
+        (doc.name || doc.original_filename || "")
           .toLowerCase()
           .includes(searchQuery.toLowerCase())
       ),
     [documents, searchQuery]
   );
+
+  const handleRenameDocument = async () => {
+    if (!selectedDoc) return;
+
+    const trimmedName = editedDocumentName.trim();
+    if (!trimmedName) {
+      showToast({ message: "Document name cannot be empty", variant: "error" });
+      return;
+    }
+
+    try {
+      setIsRenaming(true);
+      const updatedDocument = await updateDocument(selectedDoc.id, {
+        name: trimmedName,
+      });
+
+      setDocuments((prev) =>
+        prev.map((doc) => (doc.id === selectedDoc.id ? updatedDocument : doc))
+      );
+      setSelectedDoc(updatedDocument);
+      setEditedDocumentName(updatedDocument.name || "");
+      showToast({ message: "Document renamed", variant: "success" });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to rename document";
+      showToast({ message, variant: "error" });
+    } finally {
+      setIsRenaming(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -163,7 +201,7 @@ export default function DocumentsPage() {
               <DocumentList
                 isLoading={isLoading}
                 documents={filteredDocuments}
-                onSelectDocument={setSelectedDoc}
+                onSelectDocument={handleSelectDocument}
                 onSelectConvertPages={handleConvertPages}
                 onSelectExtractLines={handleExtractLines}
                 onDelete={handleDelete}
@@ -178,7 +216,12 @@ export default function DocumentsPage() {
       {/* Document Details Dialog */}
       <Dialog
         open={!!selectedDoc}
-        onOpenChange={(open: boolean) => !open && setSelectedDoc(null)}
+        onOpenChange={(open: boolean) => {
+          if (!open) {
+            setSelectedDoc(null);
+            setEditedDocumentName("");
+          }
+        }}
       >
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           {selectedDoc && (
@@ -187,7 +230,7 @@ export default function DocumentsPage() {
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <DialogTitle className="text-xl sm:text-2xl break-words">
-                      {selectedDoc.original_filename || "Untitled"}
+                      {selectedDoc.name || selectedDoc.original_filename || "Untitled"}
                     </DialogTitle>
                     <DialogDescription className="mt-2">
                       Document uploaded on {formatDate(selectedDoc.created_at)}
@@ -197,6 +240,21 @@ export default function DocumentsPage() {
               </DialogHeader>
 
               <div className="space-y-6 py-4">
+                <div className="space-y-2">
+                  <h3 className="font-semibold">Document Name</h3>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Input
+                      value={editedDocumentName}
+                      onChange={(event) => setEditedDocumentName(event.target.value)}
+                      placeholder="Enter document name"
+                      maxLength={255}
+                    />
+                    <Button onClick={handleRenameDocument} disabled={isRenaming}>
+                      {isRenaming ? "Saving..." : "Save"}
+                    </Button>
+                  </div>
+                </div>
+
                 {/* Status Section */}
                 <div className="space-y-2">
                   <h3 className="font-semibold">Status</h3>
@@ -269,6 +327,12 @@ export default function DocumentsPage() {
                 <div className="space-y-2 border-t pt-4">
                   <h3 className="font-semibold">Details</h3>
                   <div className="space-y-2 text-sm">
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground">Original Filename</span>
+                      <span className="text-right break-all">
+                        {selectedDoc.original_filename || "Untitled"}
+                      </span>
+                    </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Uploaded</span>
                       <span>{formatDate(selectedDoc.created_at)}</span>
